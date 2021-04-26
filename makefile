@@ -13,8 +13,8 @@ all: $(ALL)
 ./server/stat: ./server/stat.c utils_v10.h utils_v10.o
 	cc $(CFLAGS) -o ./server/stat ./server/stat.c utils_v10.o
 
-./client/client: ./client/stat.c utils_v10.h utils_v10.o
-	cc $(CFLAGS) -o ./client/stat ./client/stat.c utils_v10.o 
+./client/client: ./client/client.c utils_v10.h utils_v10.o
+	cc $(CFLAGS) -o ./client/client ./client/client.c utils_v10.o 
 
 utils_v10.o: utils_v10.h utils_v10.c 
 	cc $(CFLAGS) -c utils_v10.c
