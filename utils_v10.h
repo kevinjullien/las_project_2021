@@ -22,6 +22,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
+#include <sys/socket.h>
 
 
 #define BUFFER_SIZE 1024
