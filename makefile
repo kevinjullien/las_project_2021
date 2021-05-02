@@ -21,5 +21,5 @@ utils_v10.o: utils_v10.h utils_v10.c
 
 
 clean:
-	rm -f ./server/*.o $(ALL)
+	rm -f *.o ./server/*.o $(ALL)
 	ipcrm -a

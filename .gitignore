@@ -1,0 +1,5 @@
+*.o
+./server/server
+./server/maint
+./server/stat
+./client/client
