@@ -19,7 +19,7 @@ typedef struct
 
 typedef struct
 {
-    int qte;
+    int taille;
     Programme programmes[NBRPROGS];
 } Programmes;
 

@@ -29,25 +29,25 @@ int main(int argc, char const *argv[])
 
         // TODO Développement uniquement
         /* début développement */
-        Programmes *s = sshmat(shm_id);
+        Programmes *programmes = sshmat(shm_id);
         Programme programme;
 
         strcpy(programme.nom, "HelloWorld.c");
-        s->qte = 1;
+        programmes->taille = 1;
         programme.erreur = false;
         programme.nbrExec = 10;
         programme.num = 0;
         programme.totalExec = 64;
 
-        s->programmes[0] = programme;
+        programmes->programmes[0] = programme;
 
-        sshmdt(s);
+        sshmdt(programmes);
         /* fin développement */
 
         break;
 
     case 2:
-        printf("Destruction ressources partagées\n"); //TODO pas demandé
+        printf("Destruction ressources partagées\n");
         shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
         sem_id = sem_get(SEM_KEY, 1);
 
@@ -56,7 +56,7 @@ int main(int argc, char const *argv[])
         break;
 
     case 3:
-        printf("Réservation ressources partagées\n"); //TODO pas demandé
+        printf("Réservation ressources partagées\n");
         if (argc != 3){
             printf("%s", badInputMessage);
             exit(1);
@@ -67,7 +67,6 @@ int main(int argc, char const *argv[])
 
         printf("down\n"); //TODO Développement uniquement
         sem_down0(sem_id);
-        
 
         sleep(val);
 
