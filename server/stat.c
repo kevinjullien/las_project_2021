@@ -16,7 +16,7 @@ int main(int argc, char const *argv[])
 
     sem_down0(sem_id);
 
-    printf("Nbr total de programmes %d\n", s->qte); //TODO Développement uniquement
+    printf("Nbr total de programmes %d\n", s->qte); //A titre informatif
 
     int numProg = atoi(argv[1]);
     if (numProg < 0 || numProg >= s->qte)
