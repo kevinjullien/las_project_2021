@@ -26,7 +26,7 @@ int main(int argc, char const *argv[])
 {
   int sockfd, newsockfd;
   clientMessage msg;
-  struct pollfd fds[MAX_CLIENT];
+  //struct pollfd fds[MAX_CLIENT];
 
   if (argc != 2) {
 		printf("%s\n", "Usage: ./server port");

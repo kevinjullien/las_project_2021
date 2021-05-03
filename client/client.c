@@ -50,7 +50,6 @@ int main(int argc, char **argv) {
         if (command == '+')
         {
            //addFileC(&sockfd);
-           
         }
 
         /*---------modify file C----------*/
