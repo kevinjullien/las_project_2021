@@ -27,7 +27,8 @@ int main(int argc, char const *argv[])
         shm_id = sshmget(SHM_KEY, sizeof(Programmes), IPC_CREAT | IPC_EXCL | PERM);
         sem_create(SEM_KEY, 1, PERM, 1);
 
-        /* développement uniquement */
+        // TODO Développement uniquement
+        /* début développement */
         Programmes *s = sshmat(shm_id);
         Programme programme;
 
@@ -46,8 +47,7 @@ int main(int argc, char const *argv[])
         break;
 
     case 2:
-        /* code */
-        printf("Destruction ressources partagées\n");
+        printf("Destruction ressources partagées\n"); //TODO pas demandé
         shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
         sem_id = sem_get(SEM_KEY, 1);
 
@@ -56,8 +56,7 @@ int main(int argc, char const *argv[])
         break;
 
     case 3:
-        /* code */
-        printf("Réservation ressources partagées\n");
+        printf("Réservation ressources partagées\n"); //TODO pas demandé
         if (argc != 3){
             printf("%s", badInputMessage);
             exit(1);
@@ -66,13 +65,13 @@ int main(int argc, char const *argv[])
 
         sem_id = sem_get(SEM_KEY, 1);
 
-        printf("down\n");
+        printf("down\n"); //TODO Développement uniquement
         sem_down0(sem_id);
         
 
         sleep(val);
 
-        printf("up\n");
+        printf("up\n"); // TODO Développement uniquement
         sem_up0(sem_id);
 
         break;
