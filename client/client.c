@@ -19,18 +19,23 @@
 //Recursif program execution
 void recProgExec(int numprog);
 //heartBeat son
-void heartBeat(int frequency,int* pipe2,int* pipe3);
+void heartBeat(void* frequency,void* pipe2,void* pipe3);
 //recursifExecutor son
-void recursifExecutor(int numprog, int* pipe1);
+void recursifExecutor(void* numprog, void* pipe1);
 //Add file C
-void addFileC();
+void addFileC(int* sockfd);
 //modify file C
-void editFileC(int numprog);
+void editFileC(int* numprog);
 //execute program
-void executeProgam(int numprog);
+void executeProgam(int* numprog);
 
 int main(int argc, char **argv) {
-
+    /*
+    // socket creation
+    int sockfd = ssocket();
+    // socket connection
+    sconnect(LOCAL_HOST, SERVER_PORT, sockfd);
+    */
     printf("Welcome !\n");
 
     char command = '>';
@@ -39,11 +44,11 @@ int main(int argc, char **argv) {
     while (command != 'q')
     {
         printf("What do you want to do ?\n");
-        scanf("%d",&command);
+        scanf("%c",&command);
         /*---------Add file C------------*/
         if (command == '+')
         {
-           addFileC();
+           //addFileC(&sockfd);
         }
 
         /*---------modify file C----------*/
@@ -52,7 +57,7 @@ int main(int argc, char **argv) {
             printf("Give the num of the program you want to edit\n");
             scanf("%d",&numprog);
 
-            editFileC(numprog);
+            editFileC(&numprog);
         }
 
         /*--------HeartBeat program execution--------*/
@@ -62,7 +67,7 @@ int main(int argc, char **argv) {
             scanf("%d",&numprog);
 
             //Recursif program execution
-            void recProgExec(int numprog);
+            recProgExec(numprog);
         }
 
         /*---------Execute program---------*/
@@ -71,128 +76,83 @@ int main(int argc, char **argv) {
             printf("Give the num of the program you want to launch\n");
             scanf("%d",&numprog);
 
-            executeProgam(numprog);
+            executeProgam(&numprog);
+        }
+
+        else if (command == 'q')
+        {
+            printf("bye\n");
+            //sclose(sockfd);
         }
         
         else
         {
             printf("This command is not available use '+' , '.' , '*' , '@' or 'q'\n");
         }
-        printf("Bye");
     }
 }
 
 //Recursif program execution
 void recProgExec(int numprog){
-    //shared memory access
-    int frequency = 0;
     int p1[2];
     spipe(p1);
 
     //start recusif execution
-    //pid_t pidRecExec = fork_and_run2(recursifExecutor,numprog,&p1); /// au choix
-    pid_t pidRecExe = sfork();
-    if (pidRecExe == 0)
-    {
-        sclose(p1[0]);
-        int p2[2];
-        int p3[2];
-        spipe(p2);
-        spipe(p3);
-
-        //start heart beat
-        //pid_t pidHeartBeat = fork_and_run3(heartBeat,frequency,&p2,&p3); /// au choix
-        pid_t pidHeartBeat = sfork();
-        if (pidHeartBeat == 0)
-        {
-            sclose(p2[0]);
-            sclose(p3[1]);
-            int start = 1;
-            int go = 1;
-            
-            while (start == 1)
-            {
-                sleep(frequency);
-                //start process
-                swrite(p2[1],&go,sizeof(int));
-                //end process
-                sread(p3[0],&go,sizeof(int));
-            }
+    fork_and_run2(recursifExecutor,&numprog,&p1); /// au choix
     
-            sclose(p2[1]);
-            sclose(p3[0]);
-        }else
-        {
-            sclose(p2[1]);
-            sclose(p3[0]);
-            int start = 1;
-            int exec = 1;
-            int data = 666;
+    sclose(p1[1]);
 
-            while (start == 1)
-            {
-                //Execute the program once
-                sread(p2[0],&exec,sizeof(int));
-                //Send data to terminal
-                swrite(p1[1],&data,sizeof(int));
-                //End program once 
-                swrite(p3[1],&exec,sizeof(int));
-            }
+    sclose(p1[0]);
 
-            sclose(p2[0]);
-            sclose(p3[1]);
-        }
-        sclose(p1[1]);
-    }else
-    {
-        sclose(p1[1]);
-
-        sclose(p1[0]);
-    }
 }
 //heartBeat son
-void heartBeat(int frequency,int* pipe2,int* pipe3){
-    sclose(pipe2[0]);
-    sclose(pipe3[1]);
+void heartBeat(void* frequency,void* pipe2,void* pipe3){
+    int* freq = frequency;
+    int* p2 = pipe2;
+    int* p3 = pipe3;
+    sclose(p2[0]);
+    sclose(p3[1]);
     int start = 1;
     int go = 1;
     
     while (start == 1)
     {
-        sleep(frequency);
+        sleep(*freq);
         //start process
-        swrite(pipe2[1],&go,sizeof(int));
+        swrite(p2[1],&go,sizeof(int));
         //end process
-        sread(pipe3[0],&go,sizeof(int));
+        sread(p3[0],&go,sizeof(int));
     }
 
-    sclose(pipe2[1]);
-    sclose(pipe3[0]);
+    sclose(p2[1]);
+    sclose(p3[0]);
 }
 //recursifExecutor son
-void recursifExecutor(int numprog, int* pipe1){
+void recursifExecutor(void* numprog, void* pipe1){
+    int* numprogram = numprog;
+    int* p1 = pipe1;
     int frequency = 0;
-    sclose(pipe1[0]);
+
+    sclose(p1[0]);
     int p2[2];
     int p3[2];
     spipe(p2);
     spipe(p3);
 
     //start heart beat
-    pid_t pidHeartBeat = fork_and_run3(heartBeat,frequency,&p2,&p3);
+    fork_and_run3(heartBeat,&frequency,&p2,&p3);
     
     sclose(p2[1]);
     sclose(p3[0]);
     int start = 1;
     int exec = 1;
-    int data = 666;
 
     while (start == 1)
     {
         //Execute message
         sread(p2[0],&exec,sizeof(int));
         //Execute program once
-        executeProgam(numprog);
+        executeProgam(numprogram);
         //End program once 
         swrite(p3[1],&exec,sizeof(int));
     }
@@ -200,19 +160,21 @@ void recursifExecutor(int numprog, int* pipe1){
     sclose(p2[0]);
     sclose(p3[1]);
     
-    sclose(pipe1[1]);
+    sclose(p1[1]);
 
 }
 //Add file C
-void addFileC(){
-
+void addFileC(int* sockfd){
+    char location [256];
+    printf("Give me the location of the program");
+    scanf("%s",location);
 }
 //modify file C
-void editFileC(int numprog){
+void editFileC(int* numprog){
 
 }
 //execute program
-void executeProgam(int numprog){ /// Les message ici doivent etre modifer en char ou int je n'aime pas les tableau
+void executeProgam(int* numprog){ /// Les message ici doivent etre modifer en char ou int je n'aime pas les tableau
     char* message = "Do it! ... Just do it!";
     // socket creation
     int sockfd = ssocket();
@@ -222,10 +184,10 @@ void executeProgam(int numprog){ /// Les message ici doivent etre modifer en cha
     swrite(sockfd,&message,sizeof(char)*22);
     // response from serveur (ok / ko)
     sread(sockfd,&message,sizeof(char)*2);
-    if (message == "ko"){printf("Error in the execution");}
-    if (message == "ok"){
+    if (strcmp(message,"ko") == 0){printf("Error in the execution");}
+    if (strcmp(message,"ko") == 0){
         printf("Progam executing ...");
-        while (message != "end")
+        while (strcmp(message,"end") != 0)
         {
             sread(sockfd,&message,sizeof(char)*256);    /// Il va y avoir une erreur de taille ici ? a corriger
         }
