@@ -14,8 +14,14 @@ typedef struct
     bool erreur;
     int nbrExec;
     long totalExec;
+} Programme;
 
-} programme;
+typedef struct
+{
+    int qte;
+    Programme programmes[1000];
+} Programmes;
+
 
 
 #endif  // _IPC_CONF_H_

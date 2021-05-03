@@ -24,14 +24,14 @@ int main(int argc, char const *argv[])
     case 1:
         /* code */
         printf("Création ressources partagées\n");
-        sshmget(SHM_KEY, sizeof(int) + (sizeof(programme) * 1000), IPC_CREAT | IPC_EXCL | PERM);
+        sshmget(SHM_KEY, sizeof(Programmes), IPC_CREAT | IPC_EXCL | PERM);
         sem_create(SEM_KEY, 1, PERM, 1);
         break;
 
     case 2:
         /* code */
         printf("Destruction ressources partagées\n");
-        shm_id = sshmget(SHM_KEY, sizeof(int) + (sizeof(programme) * 1000), 0);
+        shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
         sem_id = sem_get(SEM_KEY, 1);
 
         sshmdelete(shm_id);
