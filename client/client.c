@@ -11,6 +11,7 @@
 
 
 #include "../utils_v10.h"
+#include "../messages.h"
 
 #define LOCAL_HOST "127.0.0.1"
 #define SERVER_PORT 9090
@@ -25,7 +26,7 @@ void recursifExecutor(void* numprog, void* pipe1);
 //Add file C
 void addFileC(int* sockfd);
 //modify file C
-void editFileC(int* numprog);
+void editFileC(int* numprog, int * sockfd);
 //execute program
 void executeProgam(int* numprog);
 
@@ -49,6 +50,7 @@ int main(int argc, char **argv) {
         if (command == '+')
         {
            //addFileC(&sockfd);
+           
         }
 
         /*---------modify file C----------*/
@@ -57,7 +59,7 @@ int main(int argc, char **argv) {
             printf("Give the num of the program you want to edit\n");
             scanf("%d",&numprog);
 
-            editFileC(&numprog);
+            //editFileC(&numprog,&sockfd);
         }
 
         /*--------HeartBeat program execution--------*/
@@ -165,32 +167,94 @@ void recursifExecutor(void* numprog, void* pipe1){
 }
 //Add file C
 void addFileC(int* sockfd){
-    char location [256];
-    printf("Give me the location of the program");
-    scanf("%s",location);
+    char file [MAX_CHAR];
+    char name [MAX_NAME];
+
+    printf("Give me the file location\n");
+    scanf("%s",file);
+    printf("Give me name of the file\n");
+    scanf("%s",name);
+
+    serverMessage serverMessage;
+    clientMessage clientMessage;
+    clientMessage.code = -1;
+    clientMessage.nameLength = strlen(name);
+    strcpy(clientMessage.file,file);
+    strcpy(clientMessage.name,name);
+
+    swrite(*sockfd,&clientMessage,sizeof(clientMessage));
+    sread(*sockfd,&serverMessage,sizeof(serverMessage));
+
+    if (serverMessage.endStatus != 0)
+    {
+        printf("The program n°%d don't compile.\n",serverMessage.pgmNum);
+        printf("Error message : %s\n",serverMessage.compileError);        
+    }else
+    {
+        printf("The program n°%d compile correctly.\n",serverMessage.pgmNum);
+    }
+    
 }
 //modify file C
-void editFileC(int* numprog){
+void editFileC(int* numprog, int* sockfd){
+    char file [MAX_CHAR];
+    char name [MAX_NAME];
 
+    printf("Give me the file location\n");
+    scanf("%s",file);
+    printf("Give me name of the file\n");
+    scanf("%s",name);
+
+    serverMessage serverMessage;
+    clientMessage clientMessage;
+    clientMessage.pgmNum = *numprog;
+    clientMessage.nameLength = strlen(name);
+    strcpy(clientMessage.file,file);
+    strcpy(clientMessage.name,name);
+
+    swrite(*sockfd,&clientMessage,sizeof(clientMessage));
+    sread(*sockfd,&serverMessage,sizeof(serverMessage));
+
+    if (serverMessage.endStatus != 0)
+    {
+        printf("The program n°%d don't compile.\n",*numprog);
+        printf("Error message : %s\n",serverMessage.compileError);        
+    }else
+    {
+        printf("The program n°%d compile correctly.\n",*numprog);
+    }
+    
 }
 //execute program
 void executeProgam(int* numprog){ /// Les message ici doivent etre modifer en char ou int je n'aime pas les tableau
-    char* message = "Do it! ... Just do it!";
     // socket creation
     int sockfd = ssocket();
     // socket connection
     sconnect(LOCAL_HOST, SERVER_PORT, sockfd);
-    // send execute message to serveur
-    swrite(sockfd,&message,sizeof(char)*22);
-    // response from serveur (ok / ko)
-    sread(sockfd,&message,sizeof(char)*2);
-    if (strcmp(message,"ko") == 0){printf("Error in the execution");}
-    if (strcmp(message,"ko") == 0){
-        printf("Progam executing ...");
-        while (strcmp(message,"end") != 0)
-        {
-            sread(sockfd,&message,sizeof(char)*256);    /// Il va y avoir une erreur de taille ici ? a corriger
-        }
+
+    serverMessage serverMessage;
+    clientMessage clientMessage;
+    clientMessage.pgmNum = *numprog;
+    clientMessage.code = -2;
+
+    swrite(sockfd,&clientMessage,sizeof(clientMessage));
+    sread(sockfd,&serverMessage,sizeof(serverMessage));
+
+    if (serverMessage.endStatus == -2)
+    {
+        printf("The program n°%d don't exist.\n",*numprog);
+    }else if (serverMessage.endStatus == -1)
+    {
+        printf("The program n°%d don't compile.\n",*numprog);
+    }else if (serverMessage.endStatus == 0)
+    {
+        printf("The program n°%d has an unexpected comportement :\n",*numprog);
+    }else if (serverMessage.endStatus == 1)
+    {
+        printf("The program n°%d ended safely.\n", *numprog);
+        printf("Time : %d\n",serverMessage.execTime);
+        printf("Code : %d\n",serverMessage.returnCode);
+        printf("stdout : %s\n",serverMessage.output);
     }
     sclose(sockfd);
 }
