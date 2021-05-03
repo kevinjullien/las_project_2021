@@ -14,13 +14,12 @@ int main(int argc, char const *argv[])
 
     Programmes *s = sshmat(shm_id);
 
-    /* code */
     sem_down0(sem_id);
 
-    printf("Nbr total de programmes %d\n", s->qte);
+    printf("Nbr total de programmes %d\n", s->qte); //A titre informatif
 
     int numProg = atoi(argv[1]);
-    if (numProg >= s->qte) //TODO repasser à > si on supprime le programme de test en 0
+    if (numProg < 0 || numProg >= s->qte)
     {
         printf("Ce programme n'existe pas\n");
         sem_up0(sem_id);
