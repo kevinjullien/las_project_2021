@@ -24,12 +24,13 @@ int main(int argc, char const *argv[])
     {
         printf("Ce programme n'existe pas\n");
         sem_up0(sem_id);
+        sshmdt(s);
         exit(1);
     }
     Programme prog = (s->programmes)[numProg];
     printf("%d\n%s\n%s\n%d\n%ld\n", prog.num, prog.nom, prog.erreur ? "true" : "false", prog.nbrExec, prog.totalExec);
 
     sem_up0(sem_id);
-
     sshmdt(s);
+    exit(0);
 }
