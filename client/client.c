@@ -45,7 +45,8 @@ int main(int argc, char **argv) {
     while (command != 'q')
     {
         printf("What do you want to do ?\n");
-        scanf("%c",&command);
+        scanf(" %c",&command);
+
         /*---------Add file C------------*/
         if (command == '+')
         {
