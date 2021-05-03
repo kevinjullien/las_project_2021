@@ -20,7 +20,7 @@ int main(int argc, char const *argv[])
     printf("Nbr total de programmes %d\n", s->qte);
 
     int numProg = atoi(argv[1]);
-    if (numProg >= s->qte) //TODO repasser à > si on supprime le programme de test en 0
+    if (numProg >= s->qte)
     {
         printf("Ce programme n'existe pas\n");
         sem_up0(sem_id);

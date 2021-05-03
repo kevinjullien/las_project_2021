@@ -6,7 +6,7 @@
 #define SEM_KEY 123
 #define SHM_KEY 456
 #define PERM 0666
-#define NBRPROGS 1001
+#define NBRPROGS 1000
 
 typedef struct
 {

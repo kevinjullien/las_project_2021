@@ -1,9 +1,5 @@
 CFLAGS=-D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D_BSD_SOURCE -std=c11 -pedantic -Wvla -Wall -Werror
-<<<<<<< HEAD
-ALL=./server/maint ./server/server ./server/stat ./client/client
-=======
-ALL=./server/maint ./server/stat #./server/server  ./client/client
->>>>>>> 19aad0f96b74ed351b2907c9802b322479e7ef85
+ALL=./server/maint ./server/stat ./server/server ./client/client
 
 all: $(ALL)
 	ipcs
