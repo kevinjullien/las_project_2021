@@ -24,8 +24,25 @@ int main(int argc, char const *argv[])
     case 1:
         /* code */
         printf("Création ressources partagées\n");
-        sshmget(SHM_KEY, sizeof(Programmes), IPC_CREAT | IPC_EXCL | PERM);
+        shm_id = sshmget(SHM_KEY, sizeof(Programmes), IPC_CREAT | IPC_EXCL | PERM);
         sem_create(SEM_KEY, 1, PERM, 1);
+
+        /* développement uniquement */
+        Programmes *s = sshmat(shm_id);
+        Programme programme;
+
+        strcpy(programme.nom, "HelloWorld.c");
+        s->qte = 1;
+        programme.erreur = false;
+        programme.nbrExec = 10;
+        programme.num = 0;
+        programme.totalExec = 64;
+
+        s->programmes[0] = programme;
+
+        sshmdt(s);
+        /* fin développement */
+
         break;
 
     case 2:
