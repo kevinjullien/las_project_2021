@@ -7,7 +7,7 @@ all: $(ALL)
 ./server/maint: ./server/maint.c utils_v10.h utils_v10.o ./server/ipc_conf.h
 	cc $(CFLAGS) -o ./server/maint ./server/maint.c utils_v10.o
 
-./server/server: ./server/server.c utils_v10.h utils_v10.o ./server/ipc_conf.h
+./server/server: ./server/server.c utils_v10.h utils_v10.o ./server/ipc_conf.h messages.h
 	cc $(CFLAGS) -o ./server/server ./server/server.c utils_v10.o
 
 ./server/stat: ./server/stat.c utils_v10.h utils_v10.o ./server/ipc_conf.h
