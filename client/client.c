@@ -18,11 +18,11 @@
 #define VAL 7
 
 //Recursif program execution
-void recProgExec(int numprog);
+void recProgExec(int numprog, int frequency);
 //heartBeat son
 void heartBeat(void* frequency,void* pipe2,void* pipe3);
 //recursifExecutor son
-void recursifExecutor(void* numprog, void* pipe1);
+void recursifExecutor(void* numprog, void* pipe1, void* frequency);
 //Add file C
 void addFileC(int* sockfd);
 //modify file C
@@ -31,12 +31,15 @@ void editFileC(int* numprog, int * sockfd);
 void executeProgam(int* numprog);
 
 int main(int argc, char **argv) {
-    /*
+    
+    char* local_host = argv[1];
+    int server_port = argv[2];
+    int DELAY = argv[3];
     // socket creation
     int sockfd = ssocket();
     // socket connection
     sconnect(LOCAL_HOST, SERVER_PORT, sockfd);
-    */
+    
     printf("Welcome !\n");
 
     char command = '>';
@@ -69,7 +72,7 @@ int main(int argc, char **argv) {
             scanf("%d",&numprog);
 
             //Recursif program execution
-            recProgExec(numprog);
+            recProgExec(numprog,DELAY);
         }
 
         /*---------Execute program---------*/
@@ -95,12 +98,12 @@ int main(int argc, char **argv) {
 }
 
 //Recursif program execution
-void recProgExec(int numprog){
+void recProgExec(int numprog, int frequency){
     int p1[2];
     spipe(p1);
 
     //start recusif execution
-    fork_and_run2(recursifExecutor,&numprog,&p1); /// au choix
+    fork_and_run3(recursifExecutor,&numprog,&p1,&frequency);
     
     sclose(p1[1]);
 
@@ -130,10 +133,9 @@ void heartBeat(void* frequency,void* pipe2,void* pipe3){
     sclose(p3[0]);
 }
 //recursifExecutor son
-void recursifExecutor(void* numprog, void* pipe1){
+void recursifExecutor(void* numprog, void* pipe1, void* frequency){
     int* numprogram = numprog;
     int* p1 = pipe1;
-    int frequency = 0;
 
     sclose(p1[0]);
     int p2[2];
@@ -142,7 +144,7 @@ void recursifExecutor(void* numprog, void* pipe1){
     spipe(p3);
 
     //start heart beat
-    fork_and_run3(heartBeat,&frequency,&p2,&p3);
+    fork_and_run3(heartBeat,frequency,&p2,&p3);
     
     sclose(p2[1]);
     sclose(p3[0]);
