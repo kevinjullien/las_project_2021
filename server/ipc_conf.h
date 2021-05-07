@@ -6,6 +6,7 @@
 #define SEM_KEY 123
 #define SHM_KEY 456
 #define PERM 0666
+#define NBRPROGS 1000
 
 typedef struct
 {
@@ -18,8 +19,8 @@ typedef struct
 
 typedef struct
 {
-    int qte;
-    Programme programmes[1000];
+    int taille;
+    Programme programmes[NBRPROGS];
 } Programmes;
 
 

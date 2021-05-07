@@ -7,19 +7,24 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <time.h>
 
 #include "../utils_v10.h"
 #include "ipc_conf.h"
 #include "../messages.h"
+#include "ipc_conf.h"
 
-#define BACKLOG 5 // TO VERIFY
+#define BACKLOG 5    // TO VERIFY
 #define MAX_CLIENT 5 // TO VERIFY
 #define CODE_PATH "./code"
 
-int initSocketServer(int port) 
+//void addProgram(clientMessage msg, int newsockfd);
+
+int initSocketServer(int port)
 {
-  int sockfd  = ssocket();
+  int sockfd = ssocket();
   sbind(port, sockfd);
   slisten(sockfd, BACKLOG);
   return sockfd;
@@ -66,7 +71,7 @@ void compilation_handler (void* arg1, void* arg2) {
 
 }
 
-void execute_program (int pgmNumber, serverMessage* resp) {
+void executeProgram (int pgmNumber, serverMessage* resp) {
   time_t start, end;
   int status;
   int pipefd[2];
@@ -156,6 +161,134 @@ void execute_program (int pgmNumber, serverMessage* resp) {
 
 }
 
+  
+
+
+void addProgram(clientMessage req, serverMessage* resp)
+{ 
+  /* récupération des données nécessaires */
+  int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
+  int sem_id = sem_get(SEM_KEY, 1);
+
+  Programmes *programmes = sshmat(shm_id);
+  int num = programmes->taille;
+
+  if (num >= 1000){
+    //TODO message d'erreur
+    return;
+  }
+
+  Programme programme;
+  strcpy(programme.nom, req.name);
+  programme.num = num;
+  resp->pgmNum = num;
+
+  /* Création et récupération des données du fichier */
+
+  char path[10]; //TODO bof, voir avec constante
+  sprintf(path, "%s/%d.c", CODE_PATH, num);
+
+  int fd = sopen(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+  swrite(fd, req.file, strlen(req.file));
+  sclose(fd);
+
+
+  /* Compilation du programme */
+
+  int pipefd[2];
+  spipe(pipefd);
+
+  pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &num);
+  close(pipefd[1]);
+
+  char buffer[MAX_CHAR];
+  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
+  {
+    // Compilation error
+    programme.erreur = true;
+    resp->compileFlag = COMPILE_KO;
+    strcpy(resp->output, buffer);
+  }
+
+  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
+
+    
+
+  /* Création des données dans la mémoire partagée */
+
+  sem_down0(sem_id);
+  (programmes->programmes)[num] = programme;
+  programmes->taille = programmes->taille + 1;
+
+  sem_up0(sem_id);
+}
+
+
+void editProgram (clientMessage req, serverMessage* resp)
+{
+  int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
+  int sem_id = sem_get(SEM_KEY, 1);
+
+  int num = req.pgmNum;
+
+  if(num < 0 || num > 999){
+    resp->endStatus = PGM_NOT_FOUND;
+    return;
+  }
+
+  Programmes *programmes = sshmat(shm_id);
+  Programme p = (programmes->programmes)[num];
+
+  // TO VERIFY
+  if( (p.nom)[0] == '\0') {
+    resp->endStatus = PGM_NOT_FOUND;
+    return;
+  }
+
+  Programme programme;
+  strcpy(programme.nom, req.name);
+  programme.num = num;
+  resp->pgmNum = num;
+
+  /* récupération des données du fichier */
+
+  char path[10]; //TODO bof, voir avec constante
+  sprintf(path, "%s/%d.c", CODE_PATH, num);
+
+  int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+  swrite(fd, req.file, strlen(req.file));
+  sclose(fd);
+
+  /* Compilation du programme */
+
+  int pipefd[2];
+  spipe(pipefd);
+
+  pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &num);
+  close(pipefd[1]);
+
+  char buffer[MAX_CHAR];
+  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
+  {
+    // Compilation error
+    programme.erreur = true;
+    resp->compileFlag = COMPILE_KO;
+    strcpy(resp->output, buffer);
+  }
+
+  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
+
+    
+
+  /* Modification des données dans la mémoire partagée */
+
+  sem_down0(sem_id);
+  (programmes->programmes)[num] = programme;
+  sem_up0(sem_id);
+}
+
+
+
 /*
 int main(int argc, char const *argv[])
 {
@@ -163,52 +296,88 @@ int main(int argc, char const *argv[])
   clientMessage msg;
   //struct pollfd fds[MAX_CLIENT];
 
-  if (argc != 2) {
-		printf("%s\n", "Usage: ./server port");
-		exit(1);
-	}
+  if (argc != 2)
+  {
+    printf("%s\n", "Usage: ./server port");
+    exit(1);
+  }
 
   sockfd = initSocketServer(atoi(argv[1]));
   printf("server listening on port : %i \n", atoi(argv[1]));
 
-  while(1)
+  while (1)
   {
     newsockfd = saccept(sockfd);
     sread(newsockfd, &msg, sizeof(msg));
 
-    if (msg.code == ADD_PGM) {
-      
-
-    } else if (msg.code == EXEC_PGM) {
-      // créer un fils pour chaque execution d'un pgm
-      printf("Demande d'execution du programmes %d", msg.pgmNum);
-      serverMessage* resp = malloc(sizeof(serverMessage));
-      execute_program(msg.pgmNum, resp);
-
-      //int cpid = fork_and_run1(&child_handler, msg.pgmNum);
-    } else {
+    if (msg.code == ADD_PGM)
+    { 
+       addProgram(msg, newsockfd);
+    }
+    else if (msg.code == EXEC_PGM)
+    {
+    }
+    else
+    {
       // MODIFY PGM
       // check if pgm exists
-      // 
-
+      //
     }
-
   }
 
   return 0;
 }*/
 
 
-/* FOR DEBUGGING PURPOSES */
+
+/* SCENARIO DE TEST (DEV ONLY) */
 int main(int argc, char const *argv[]){
   serverMessage* resp = malloc(sizeof(serverMessage));
-  execute_program(1, resp);
+
+  clientMessage* req = malloc(sizeof(clientMessage));
+  strcpy(req->name,"HelloWord");
+  req->nameLength = 9;
+  char* file = "#include<stdio.h>\n#include<stdlib.h>\n#include<unistd.h>\nint main(){sleep(3);printf(\"Hello World SLEEP 3 sec\");}";
+  strcpy(req->file, file); 
+
+
+  printf("---- ADD PROGRAM ----\n");
+
+  addProgram(*req, resp);
+  printf("PGM NUM         : %d\n",resp->pgmNum);
+  printf("PGM COMPILATION : %d\n",resp->compileFlag);
+  printf("PGM OUTPUT      : \n>>> %s\n", resp->output);
+
+
+  printf("---- EXEC PROGRAM ----\n");
+  executeProgram(1, resp);
   printf("PGM NUM         : %d\n",resp->pgmNum);
   printf("PGM END STATUS  : %d\n",resp->endStatus);
   printf("PGM EXEC TIME   : %d\n",resp->execTime);
   printf("PGM RETURN CODE : %d\n",resp->returnCode);
   printf("PGM OUTPUT      : \n>>> %s\n",resp->output);
+
+  printf("---- EDIT PROGRAM ----\n");
+
+  strcpy(resp->output,"");
+  req->pgmNum = 1;
+  file = "#include<stdio.h>\n#include<stdlib.h>\n#include<unistd.h>\nint main(){sleep(5);printf(\"Hello World SLEEP 5 sec\");}";
+  strcpy(req->file, file); 
+
+  editProgram(*req, resp);
+  printf("PGM NUM         : %d\n",resp->pgmNum);
+  printf("PGM COMPILATION : %d\n",resp->compileFlag);
+  printf("PGM OUTPUT      : \n>>> %s\n", resp->output);
+
+
+  printf("---- EXEC PROGRAM ----\n");
+  executeProgram(1, resp);
+  printf("PGM NUM         : %d\n",resp->pgmNum);
+  printf("PGM END STATUS  : %d\n",resp->endStatus);
+  printf("PGM EXEC TIME   : %d\n",resp->execTime);
+  printf("PGM RETURN CODE : %d\n",resp->returnCode);
+  printf("PGM OUTPUT      : \n>>> %s\n",resp->output);
+
   free(resp);
 }
-  
 

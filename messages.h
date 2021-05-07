@@ -19,7 +19,7 @@
 
 
 typedef struct {
-    int code; // -1 or -2 or the pgm number
+    int code; // -1 (add) or -2 (execute) or the pgm number (modif)
     int pgmNum;
     int nameLength;
     char name[MAX_NAME];
