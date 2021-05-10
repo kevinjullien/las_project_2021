@@ -28,8 +28,6 @@ typedef struct {
 
 typedef struct {
     int pgmNum;
-    int compileFlag;
-    char compileError[MAX_CHAR];
     int endStatus; 
     int execTime;
     int returnCode;

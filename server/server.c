@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include "../utils_v10.h"
 #include "../messages.h"
@@ -72,7 +72,7 @@ void compilation_handler (void* arg1, void* arg2) {
 
 void executeProgram (int pgmNumber) {
   serverMessage* resp = smalloc(sizeof(serverMessage));
-  time_t start, end;
+  struct timeval stop, start;
   int status;
   int pipefd[2];
   char buffer[MAX_CHAR];
@@ -112,7 +112,6 @@ void executeProgram (int pgmNumber) {
     // COMPILATION FAILED
     p.erreur = true;
     resp->endStatus = COMPILE_KO;
-    resp->returnCode = -1;        // TO VERIFY
     strcpy(resp->output, buffer); // TO VERIFY
     return;
   }
@@ -122,18 +121,20 @@ void executeProgram (int pgmNumber) {
 
   // Now we can execute the pgm
   spipe(pipefd);
-  time(&start); // Start Timer
+  
+ gettimeofday(&start, NULL); // Start Timer
   pid_t cpid_execution = fork_and_run2(&execution_handler, pipefd, &pgmNumber);
   close(pipefd[1]); 
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
+    printf("ICI %s\n", buffer);
     //sleep(2);
     resp->endStatus = COMPILE_OK;
     strcpy(resp->output, buffer); // TO VERIFY
 
     // Stop Timer
-    time(&end);
-    resp->execTime = (int) difftime(end, start);
+    gettimeofday(&stop, NULL);
+    resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
   }
 
   // Wait for execution_handler to finish execution
@@ -189,7 +190,7 @@ void addProgram(clientMessage req, int newsockfd)
   char path[30]; //TODO bof, voir avec constante
   sprintf(path, "%s/%d.c", CODE_PATH, num);
 
-  int fd = sopen(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+  int fd = sopen(path, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 
   void* file = smalloc(req.filesize);
   sread(newsockfd, file, req.filesize);
@@ -211,13 +212,11 @@ void addProgram(clientMessage req, int newsockfd)
   {
     // Compilation error
     programme.erreur = true;
-    resp->compileFlag = COMPILE_KO;
+    resp->endStatus = COMPILE_KO;
     strcpy(resp->output, buffer);
   }
 
-  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
-
-    
+  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done 
 
   /* Création des données dans la mémoire partagée */
 
@@ -288,7 +287,7 @@ void editProgram (clientMessage req, int newsockfd)
   {
     // Compilation error
     programme.erreur = true;
-    resp->compileFlag = COMPILE_KO;
+    resp->endStatus = COMPILE_KO;
     strcpy(resp->output, buffer);
   }
 
