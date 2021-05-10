@@ -23,3 +23,12 @@ utils_v10.o: utils_v10.h utils_v10.c
 clean:
 	rm -f *.o ./server/*.o $(ALL)
 	ipcrm -a
+
+create_server:
+	./server/maint 1 ; ./server/server 9090
+
+create_client:
+	./client/client 127.0.01 9090 5
+
+close_serveur:
+	./server/maint 2
