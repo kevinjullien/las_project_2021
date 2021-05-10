@@ -156,7 +156,6 @@ void addFileC(int* sockfd){
     clientMessage clientMessage;
     clientMessage.code = -1;
     clientMessage.nameLength = strlen(name);
-    strcpy(clientMessage.file,file);
     strcpy(clientMessage.name,name);
 
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
@@ -186,7 +185,6 @@ void editFileC(int* numprog, int* sockfd){
     clientMessage clientMessage;
     clientMessage.pgmNum = *numprog;
     clientMessage.nameLength = strlen(name);
-    strcpy(clientMessage.file,file);
     strcpy(clientMessage.name,name);
 
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));

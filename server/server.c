@@ -186,7 +186,7 @@ void addProgram(clientMessage req, int newsockfd)
 
   /* Création et récupération des données du fichier */
 
-  char path[10]; //TODO bof, voir avec constante
+  char path[30]; //TODO bof, voir avec constante
   sprintf(path, "%s/%d.c", CODE_PATH, num);
 
   int fd = sopen(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
@@ -261,7 +261,7 @@ void editProgram (clientMessage req, int newsockfd)
 
   /* récupération des données du fichier */
 
-  char path[10]; //TODO bof, voir avec constante
+  char path[30]; //TODO bof, voir avec constante
   sprintf(path, "%s/%d.c", CODE_PATH, num);
 
   int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
