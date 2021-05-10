@@ -13,16 +13,13 @@
 #include "../utils_v10.h"
 #include "../messages.h"
 
-#define LOCAL_HOST "127.0.0.1"
-#define SERVER_PORT 9090
-#define VAL 7
+char* local_host = "";
+int server_port = 0;
 
-//Recursif program execution
-void recProgExec(int numprog, int frequency);
 //heartBeat son
-void heartBeat(void* frequency,void* pipe2,void* pipe3);
+void heartBeat(void* frequency,void* pipe);
 //recursifExecutor son
-void recursifExecutor(void* numprog, void* pipe1, void* frequency);
+void recursifExecutor(void* numprog, void* pipe);
 //Add file C
 void addFileC(int* sockfd);
 //modify file C
@@ -31,14 +28,26 @@ void editFileC(int* numprog, int * sockfd);
 void executeProgam(int* numprog);
 
 int main(int argc, char **argv) {
+
+    if (argc != 4)
+    {
+        printf("ERROR\nYou need to enter 3 args to create a client :\n./client local_host(string) server_port(int) DELAY(int)\n");
+        exit(1);
+    }
     
-    char* local_host = argv[1];
-    int server_port = argv[2];
-    int DELAY = argv[3];
+    
+    local_host = argv[1];
+    server_port = atoi(argv[2]);
+    int delay = atoi(argv[3]);
+
+    int pipe[2];
+    spipe(pipe);
+    
+    fork_and_run2(heartBeat,&delay,pipe);
     // socket creation
     int sockfd = ssocket();
     // socket connection
-    sconnect(LOCAL_HOST, SERVER_PORT, sockfd);
+    sconnect(local_host, server_port, sockfd);
     
     printf("Welcome !\n");
 
@@ -72,7 +81,7 @@ int main(int argc, char **argv) {
             scanf("%d",&numprog);
 
             //Recursif program execution
-            recProgExec(numprog,DELAY);
+            fork_and_run2(recursifExecutor,&numprog,pipe);
         }
 
         /*---------Execute program---------*/
@@ -97,74 +106,40 @@ int main(int argc, char **argv) {
     }
 }
 
-//Recursif program execution
-void recProgExec(int numprog, int frequency){
-    int p1[2];
-    spipe(p1);
 
-    //start recusif execution
-    fork_and_run3(recursifExecutor,&numprog,&p1,&frequency);
-    
-    sclose(p1[1]);
-
-    sclose(p1[0]);
-
-}
 //heartBeat son
-void heartBeat(void* frequency,void* pipe2,void* pipe3){
+void heartBeat(void* frequency,void* pipe){
     int* freq = frequency;
-    int* p2 = pipe2;
-    int* p3 = pipe3;
-    sclose(p2[0]);
-    sclose(p3[1]);
-    int start = 1;
+    int* p = pipe;
+    sclose(p[0]);
     int go = 1;
-    
-    while (start == 1)
+    while (true)
     {
         sleep(*freq);
         //start process
-        swrite(p2[1],&go,sizeof(int));
-        //end process
-        sread(p3[0],&go,sizeof(int));
+        swrite(p[1],&go,sizeof(int));
     }
 
-    sclose(p2[1]);
-    sclose(p3[0]);
+    sclose(p[1]);
 }
 //recursifExecutor son
-void recursifExecutor(void* numprog, void* pipe1, void* frequency){
+void recursifExecutor(void* numprog, void* pipe){
     int* numprogram = numprog;
-    int* p1 = pipe1;
+    int* p = pipe;
 
-    sclose(p1[0]);
-    int p2[2];
-    int p3[2];
-    spipe(p2);
-    spipe(p3);
-
-    //start heart beat
-    fork_and_run3(heartBeat,frequency,&p2,&p3);
+    sclose(p[1]);
     
-    sclose(p2[1]);
-    sclose(p3[0]);
-    int start = 1;
     int exec = 1;
 
-    while (start == 1)
+    while (true)
     {
         //Execute message
-        sread(p2[0],&exec,sizeof(int));
+        sread(p[0],&exec,sizeof(int));
         //Execute program once
         executeProgam(numprogram);
-        //End program once 
-        swrite(p3[1],&exec,sizeof(int));
     }
-
-    sclose(p2[0]);
-    sclose(p3[1]);
     
-    sclose(p1[1]);
+    sclose(p[0]);
 
 }
 //Add file C
@@ -232,7 +207,7 @@ void executeProgam(int* numprog){ /// Les message ici doivent etre modifer en ch
     // socket creation
     int sockfd = ssocket();
     // socket connection
-    sconnect(LOCAL_HOST, SERVER_PORT, sockfd);
+    sconnect(local_host, server_port, sockfd);
 
     serverMessage serverMessage;
     clientMessage clientMessage;
