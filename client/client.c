@@ -156,10 +156,15 @@ void addFileC(int* sockfd){
     clientMessage clientMessage;
     clientMessage.code = -1;
     clientMessage.nameLength = strlen(name);
-    strcpy(clientMessage.file,file);
     strcpy(clientMessage.name,name);
 
+    int fd = sopen(file, O_RDONLY, 0644);
+    clientMessage.filesize = lseek(fd, 0, SEEK_END);
+
+    void* content = smalloc(clientMessage.filesize);
+    sread(fd, content, clientMessage.filesize);
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
+    swrite(*sockfd,content, clientMessage.filesize);
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
     if (serverMessage.endStatus != 0)
@@ -186,7 +191,6 @@ void editFileC(int* numprog, int* sockfd){
     clientMessage clientMessage;
     clientMessage.pgmNum = *numprog;
     clientMessage.nameLength = strlen(name);
-    strcpy(clientMessage.file,file);
     strcpy(clientMessage.name,name);
 
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
