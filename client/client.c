@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
         /*---------Add file C------------*/
         if (command == '+')
         {
-           //addFileC(&sockfd);
+           addFileC(&sockfd);
         }
 
         /*---------modify file C----------*/
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
             printf("Give the num of the program you want to edit\n");
             scanf("%d",&numprog);
 
-            //editFileC(&numprog,&sockfd);
+            editFileC(&numprog,&sockfd);
         }
 
         /*--------HeartBeat program execution--------*/
@@ -172,20 +172,27 @@ void addFileC(int* sockfd){
 
     int fd = sopen(file, O_RDONLY, 0644);
     clientMessage.filesize = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
 
-    void* content = smalloc(clientMessage.filesize);
-    sread(fd, content, clientMessage.filesize);
+    char* content = smalloc(clientMessage.filesize * sizeof(char));
+    int res = sread(fd, content, clientMessage.filesize);
+    if (res != clientMessage.filesize){
+        printf("ERREUR: %d // %d\n", res, clientMessage.filesize);
+    }
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
+
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
-    if (serverMessage.endStatus != 0)
+printf("%d\n", serverMessage.endStatus);
+    if (serverMessage.endStatus != 1)
     {
         printf("The program n°%d don't compile.\n",serverMessage.pgmNum);
-        printf("Error message : %s\n",serverMessage.compileError);        
+        printf("Error message : %s\n",serverMessage.output);        
     }else
     {
         printf("The program n°%d compile correctly.\n",serverMessage.pgmNum);
+        printf("%s\n", serverMessage.output);
     }
     
 }
@@ -208,10 +215,10 @@ void editFileC(int* numprog, int* sockfd){
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
-    if (serverMessage.endStatus != 0)
+    if (serverMessage.endStatus != 1)
     {
         printf("The program n°%d don't compile.\n",*numprog);
-        printf("Error message : %s\n",serverMessage.compileError);        
+        printf("Error message : %s\n",serverMessage.output);        
     }else
     {
         printf("The program n°%d compile correctly.\n",*numprog);
