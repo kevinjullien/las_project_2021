@@ -23,7 +23,7 @@ typedef struct {
     int pgmNum;
     int nameLength;
     char name[MAX_NAME];
-    char file[MAX_CHAR];
+    int filesize;
 } clientMessage;
 
 typedef struct {

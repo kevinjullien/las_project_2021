@@ -12,7 +12,6 @@
 #include <time.h>
 
 #include "../utils_v10.h"
-#include "ipc_conf.h"
 #include "../messages.h"
 #include "ipc_conf.h"
 
@@ -71,7 +70,8 @@ void compilation_handler (void* arg1, void* arg2) {
 
 }
 
-void executeProgram (int pgmNumber, serverMessage* resp) {
+void executeProgram (int pgmNumber) {
+  serverMessage* resp = smalloc(sizeof(serverMessage));
   time_t start, end;
   int status;
   int pipefd[2];
@@ -164,8 +164,9 @@ void executeProgram (int pgmNumber, serverMessage* resp) {
   
 
 
-void addProgram(clientMessage req, serverMessage* resp)
+void addProgram(clientMessage req, int newsockfd)
 { 
+  serverMessage* resp = smalloc(sizeof(serverMessage));
   /* récupération des données nécessaires */
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   int sem_id = sem_get(SEM_KEY, 1);
@@ -189,7 +190,14 @@ void addProgram(clientMessage req, serverMessage* resp)
   sprintf(path, "%s/%d.c", CODE_PATH, num);
 
   int fd = sopen(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
-  swrite(fd, req.file, strlen(req.file));
+
+  char* file = smalloc(req.filesize*sizeof(char));
+  int nbChar = sread(newsockfd, file, req.filesize);
+  if( nbChar != req.filesize) {
+    printf("DEBUG: error reading file");
+  }
+  swrite(fd, file, nbChar);
+  free(file);
   sclose(fd);
 
 
@@ -224,8 +232,9 @@ void addProgram(clientMessage req, serverMessage* resp)
 }
 
 
-void editProgram (clientMessage req, serverMessage* resp)
+void editProgram (clientMessage req, int newsockfd)
 {
+  serverMessage* resp = smalloc(sizeof(serverMessage));
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   int sem_id = sem_get(SEM_KEY, 1);
 
@@ -256,7 +265,14 @@ void editProgram (clientMessage req, serverMessage* resp)
   sprintf(path, "%s/%d.c", CODE_PATH, num);
 
   int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
-  swrite(fd, req.file, strlen(req.file));
+
+  char* file = smalloc(req.filesize*sizeof(char));
+  int nbChar = sread(newsockfd, file, req.filesize);
+  if( nbChar != req.filesize) {
+    printf("DEBUG: error reading file");
+  }
+  swrite(fd, file, nbChar);
+  free(file);
   sclose(fd);
 
   /* Compilation du programme */
@@ -289,7 +305,7 @@ void editProgram (clientMessage req, serverMessage* resp)
 
 
 
-/*
+
 int main(int argc, char const *argv[])
 {
   int sockfd, newsockfd;
@@ -326,11 +342,12 @@ int main(int argc, char const *argv[])
   }
 
   return 0;
-}*/
+}
 
 
 
 /* SCENARIO DE TEST (DEV ONLY) */
+/*
 int main(int argc, char const *argv[]){
   serverMessage* resp = malloc(sizeof(serverMessage));
 
@@ -381,3 +398,4 @@ int main(int argc, char const *argv[]){
   free(resp);
 }
 
+*/
