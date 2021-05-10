@@ -158,7 +158,13 @@ void addFileC(int* sockfd){
     clientMessage.nameLength = strlen(name);
     strcpy(clientMessage.name,name);
 
+    int fd = sopen(file, O_RDONLY, 0644);
+    clientMessage.filesize = lseek(fd, 0, SEEK_END);
+
+    void* content = smalloc(clientMessage.filesize);
+    sread(fd, content, clientMessage.filesize);
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
+    swrite(*sockfd,content, clientMessage.filesize);
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
     if (serverMessage.endStatus != 0)
