@@ -191,12 +191,9 @@ void addProgram(clientMessage req, int newsockfd)
 
   int fd = sopen(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
 
-  char* file = smalloc(req.filesize*sizeof(char));
-  int nbChar = sread(newsockfd, file, req.filesize);
-  if( nbChar != req.filesize) {
-    printf("DEBUG: error reading file");
-  }
-  swrite(fd, file, nbChar);
+  void* file = smalloc(req.filesize);
+  sread(newsockfd, file, req.filesize);
+  swrite(fd, file, req.filesize);
   free(file);
   sclose(fd);
 
