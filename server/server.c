@@ -226,6 +226,9 @@ void addProgram(clientMessage req, int newsockfd)
   programmes->taille = programmes->taille + 1;
 
   sem_up0(sem_id);
+
+  swrite(newsockfd, resp, sizeof(resp));
+  free(resp);
 }
 
 
