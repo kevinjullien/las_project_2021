@@ -19,7 +19,7 @@ int server_port = 0;
 //heartBeat son
 void heartBeat(void* frequency,void* pipe);
 //recursifExecutor son
-void recursifExecutor(void* numprog, void* pipe);
+void recursifExecutor(void* pipe);
 //Add file C
 void addFileC(int* sockfd);
 //modify file C
@@ -42,8 +42,11 @@ int main(int argc, char **argv) {
 
     int pipe[2];
     spipe(pipe);
-    
+
+    // son creation
     fork_and_run2(heartBeat,&delay,pipe);
+    fork_and_run1(recursifExecutor,pipe);
+
     // socket creation
     int sockfd = ssocket();
     // socket connection
@@ -81,7 +84,7 @@ int main(int argc, char **argv) {
             scanf("%d",&numprog);
 
             //Recursif program execution
-            fork_and_run2(recursifExecutor,&numprog,pipe);
+            swrite(pipe[1],&numprog,sizeof(int));
         }
 
         /*---------Execute program---------*/
@@ -123,20 +126,29 @@ void heartBeat(void* frequency,void* pipe){
     sclose(p[1]);
 }
 //recursifExecutor son
-void recursifExecutor(void* numprog, void* pipe){
-    int* numprogram = numprog;
+void recursifExecutor(void* pipe){
+    int programs[50];
+    int pointeur = 0;
     int* p = pipe;
 
     sclose(p[1]);
     
-    int exec = 1;
+    int exec = -1;
 
     while (true)
     {
         //Execute message
         sread(p[0],&exec,sizeof(int));
-        //Execute program once
-        executeProgam(numprogram);
+        if (exec != -1)
+        {
+            programs[pointeur] = exec;
+            exec = -1;
+        }
+        for (int i = 0; i < pointeur; i++)
+        {
+            //Execute program once
+            executeProgam(&programs[0]);
+        }
     }
     
     sclose(p[0]);
