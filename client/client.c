@@ -193,9 +193,7 @@ void addFileC(int* sockfd){
     // Answer from the server
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
-    printf("%d\n", serverMessage.endStatus);                 /// à enlever
-
-    if (serverMessage.endStatus != 1)
+    if (serverMessage.endStatus != COMPILE_OK)
     {
         printf("The program n°%d don't compile.\n",serverMessage.pgmNum);
         printf("Error message : %s\n",serverMessage.output);        
@@ -259,21 +257,32 @@ void executeProgam(int* numprog){
     serverMessage serverMessage;
     clientMessage clientMessage;
     clientMessage.pgmNum = *numprog;
-    clientMessage.code = -2;
+    clientMessage.code = EXEC_PGM;
+
+
+        //DEBUG
+        printf("(DEBUG) AVANT READ SERVEUR \n");
+        printf("Time : %d\n",serverMessage.execTime);
+        printf("Code : %d\n",serverMessage.returnCode);
+        printf("stdout : %s\n\n",serverMessage.output);
 
     swrite(sockfd,&clientMessage,sizeof(clientMessage));
+
     sread(sockfd,&serverMessage,sizeof(serverMessage));
 
-    if (serverMessage.endStatus == -2)
+    printf("(DEBUG) APRES READ SERVEUR \n");
+
+
+    if (serverMessage.endStatus == PGM_NOT_FOUND)
     {
         printf("The program n°%d don't exist.\n",*numprog);
-    }else if (serverMessage.endStatus == -1)
+    }else if (serverMessage.endStatus == COMPILE_KO)
     {
         printf("The program n°%d don't compile.\n",*numprog);
-    }else if (serverMessage.endStatus == 0)
+    }else if (serverMessage.endStatus == PGM_STATUS_KO)
     {
         printf("The program n°%d has an unexpected comportement :\n",*numprog);
-    }else if (serverMessage.endStatus == 1)
+    }else if (serverMessage.endStatus == PGM_STATUS_OK)
     {
         printf("The program n°%d ended safely.\n", *numprog);
         printf("Time : %d\n",serverMessage.execTime);

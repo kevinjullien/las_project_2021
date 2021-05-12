@@ -70,7 +70,7 @@ void compilation_handler (void* arg1, void* arg2) {
 
 }
 
-void executeProgram (int pgmNumber) {
+void executeProgram (int pgmNumber, int newsockfd) {
   serverMessage* resp = smalloc(sizeof(serverMessage));
   struct timeval stop, start;
   int status;
@@ -122,14 +122,11 @@ void executeProgram (int pgmNumber) {
   // Now we can execute the pgm
   spipe(pipefd);
   
- gettimeofday(&start, NULL); // Start Timer
+  gettimeofday(&start, NULL); // Start Timer
   pid_t cpid_execution = fork_and_run2(&execution_handler, pipefd, &pgmNumber);
   close(pipefd[1]); 
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
-    printf("ICI %s\n", buffer);
-    //sleep(2);
-    resp->endStatus = COMPILE_OK;
     strcpy(resp->output, buffer); // TO VERIFY
 
     // Stop Timer
@@ -141,7 +138,7 @@ void executeProgram (int pgmNumber) {
   swaitpid(cpid_execution, &status, 0);
   if ( WIFEXITED(status) ) {
       int code = WEXITSTATUS(status);
-      resp->returnCode = code;  
+      resp->returnCode = code;
 
       // TO VERIFY
       if(code == 0){
@@ -159,6 +156,17 @@ void executeProgram (int pgmNumber) {
   // UP MUTEX
   sem_up0(sem_id);
   sshmdt(s);
+
+  //DEBUG
+  printf("end status : %d\n",resp->endStatus);
+  printf("time : %d\n",resp->execTime);
+  printf("Ret code: %d\n",resp->returnCode);
+  printf("stdout: %s\n",resp->output);
+  printf("%ld\n", strlen(resp->output));
+
+
+  swrite(newsockfd, resp, sizeof(resp));
+  free(resp);
 
 }
 
@@ -327,10 +335,13 @@ int main(int argc, char const *argv[])
 
     if (msg.code == ADD_PGM)
     { 
-       addProgram(msg, newsockfd);
+      printf("client request : ADD NEW PROGRAM\n");
+      addProgram(msg, newsockfd);
     }
     else if (msg.code == EXEC_PGM)
     {
+      printf("client request : EXECUTE PROGRAM N°%d\n", msg.pgmNum);
+      executeProgram(msg.pgmNum, newsockfd);
     }
     else
     {
