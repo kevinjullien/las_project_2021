@@ -95,9 +95,9 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   // DOWN MUTEX
   sem_down0(sem_id);
 
-  Programme p = (s->programmes)[pgmNumber];
+  Programme *p = &(s->programmes)[pgmNumber];
   // TO VERIFY
-  if( (p.nom)[0] == '\0') {
+  if( (p->nom)[0] == '\0') {
     resp->endStatus = PGM_NOT_FOUND;
     return;
   }
@@ -111,7 +111,7 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
     // COMPILATION FAILED
-    p.erreur = true;
+    p->erreur = true;
     resp->endStatus = COMPILE_KO;
     strcpy(resp->output, buffer); // TO VERIFY
     return;
@@ -133,6 +133,7 @@ void executeProgram (clientMessage* req, int* newsockfd) {
     // Stop Timer
     gettimeofday(&stop, NULL);
     resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+    (s->programmes)[pgmNumber].totalExec +=  + resp->execTime;
   }
 
   // Wait for execution_handler to finish execution
@@ -150,9 +151,9 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   }
 
   // UPDATE PGM IN SHARED MEMORY
-  p.nbrExec = p.nbrExec + 1;
-  p.erreur = false;
-  p.totalExec = p.totalExec + resp->execTime; //TO VERIFY
+  p->nbrExec = p->nbrExec + 1;
+  p->erreur = false;
+  p->totalExec += resp->execTime; //TO VERIFY
  
   // UP MUTEX
   sem_up0(sem_id);
@@ -183,6 +184,8 @@ void addProgram(clientMessage* req, int* newsockfd)
   Programme programme;
   strcpy(programme.nom, req->name);
   programme.num = num;
+  programme.totalExec = 0;
+  programme.nbrExec = 0;
   resp->pgmNum = num;
 
   /* Création et récupération des données du fichier */
