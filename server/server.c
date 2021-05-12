@@ -306,24 +306,30 @@ void client_connection_handler (void* arg1) {
   int *newsockfd = arg1;
   clientMessage req;
 
-  sread(*newsockfd, &req, sizeof(req));
+  while (sread(*newsockfd, &req, sizeof(req)) != 0)
+  {
 
-  if (req.code == ADD_PGM)
-  { 
-    printf("client request : ADD NEW PROGRAM\n");
-    addProgram(&req, newsockfd);
+    if (req.code == ADD_PGM)
+    { 
+      printf("client request : ADD NEW PROGRAM\n");
+      addProgram(&req, newsockfd);
+    }
+    else if (req.code == EXEC_PGM)
+    {
+      printf("client request : EXECUTE PROGRAM N°%d\n", req.pgmNum);
+      executeProgram(&req, newsockfd);
+    }
+    else
+    {
+      // MODIFY PGM
+      // check if pgm exists
+      //
+    }
+
   }
-  else if (req.code == EXEC_PGM)
-  {
-    printf("client request : EXECUTE PROGRAM N°%d\n", req.pgmNum);
-    executeProgram(&req, newsockfd);
-  }
-  else
-  {
-    // MODIFY PGM
-    // check if pgm exists
-    //
-  }
+
+  printf("close connection with client\n");
+  sclose(*newsockfd);
 }
 
 

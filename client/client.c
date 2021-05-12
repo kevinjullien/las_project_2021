@@ -187,9 +187,11 @@ void addFileC(int* sockfd){
     if (res != clientMessage.filesize){
         printf("ERREUR: %d // %d\n", res, clientMessage.filesize);
     }
+
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
+    free(content);
     // Answer from the server
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
