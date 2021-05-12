@@ -18,8 +18,8 @@ int server_port = 0;
 
 //heartBeat son
 void heartBeat(void* frequency,void* pipe);
-//recursifExecutor son
-void recursifExecutor(void* pipe);
+//recurrentExecutor son
+void recurrentExecutor(void* pipe);
 //Add file C
 void addFileC(int* sockfd);
 //modify file C
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
     // son creation
     fork_and_run2(heartBeat,&delay,pipe);
-    fork_and_run1(recursifExecutor,pipe);
+    fork_and_run1(recurrentExecutor,pipe);
 
     // socket creation
     int sockfd = ssocket();
@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
             printf("Give the num of the program you want to launch\n");
             scanf("%d",&numprog);
 
-            //Recursif program execution
+            //Message to add a new program to execute in the recurrent son
             swrite(pipe[1],&numprog,sizeof(int));
         }
 
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
         else if (command == 'q')
         {
             printf("bye\n");
-            //sclose(sockfd);
+            sclose(sockfd);
         }
         
         else
@@ -112,47 +112,54 @@ int main(int argc, char **argv) {
 
 //heartBeat son
 void heartBeat(void* frequency,void* pipe){
+    
     int* freq = frequency;
+    
     int* p = pipe;
     sclose(p[0]);
-    int go = 1;
+    
+    int go = -1;
+    
     while (true)
     {
         sleep(*freq);
-        //start process
+        //start process message 
         swrite(p[1],&go,sizeof(int));
     }
 
     sclose(p[1]);
 }
-//recursifExecutor son
-void recursifExecutor(void* pipe){
+//recurrentExecutor son
+void recurrentExecutor(void* pipe){
+
     int programs[50];
     int pointeur = 0;
-    int* p = pipe;
 
+    int* p = pipe;
     sclose(p[1]);
     
     int exec = -1;
 
     while (true)
     {
-        //Execute message
+        //Recive heartBeat or a new program to launch
         sread(p[0],&exec,sizeof(int));
+
+        //New program to add in the launch list 
         if (exec != -1)
         {
             programs[pointeur] = exec;
             exec = -1;
+            pointeur++;
         }
+
         for (int i = 0; i < pointeur; i++)
         {
             //Execute program once
             executeProgam(&programs[0]);
         }
     }
-    
     sclose(p[0]);
-
 }
 //Add file C
 void addFileC(int* sockfd){
@@ -166,25 +173,28 @@ void addFileC(int* sockfd){
 
     serverMessage serverMessage;
     clientMessage clientMessage;
+    
     clientMessage.code = -1;
     clientMessage.nameLength = strlen(name);
     strcpy(clientMessage.name,name);
-
+    // Size of the file
     int fd = sopen(file, O_RDONLY, 0644);
     clientMessage.filesize = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
-
+    // Copy of the file 
     char* content = smalloc(clientMessage.filesize * sizeof(char));
     int res = sread(fd, content, clientMessage.filesize);
     if (res != clientMessage.filesize){
         printf("ERREUR: %d // %d\n", res, clientMessage.filesize);
     }
+    // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
-
+    // Answer from the server
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
-printf("%d\n", serverMessage.endStatus);
+    printf("%d\n", serverMessage.endStatus);                 /// à enlever
+
     if (serverMessage.endStatus != 1)
     {
         printf("The program n°%d don't compile.\n",serverMessage.pgmNum);
@@ -208,11 +218,25 @@ void editFileC(int* numprog, int* sockfd){
 
     serverMessage serverMessage;
     clientMessage clientMessage;
+    
     clientMessage.pgmNum = *numprog;
     clientMessage.nameLength = strlen(name);
     strcpy(clientMessage.name,name);
 
+    // Size of the file
+    int fd = sopen(file, O_RDONLY, 0644);
+    clientMessage.filesize = lseek(fd, 0, SEEK_END);
+    lseek(fd, 0, SEEK_SET);
+    // Copy of the file 
+    char* content = smalloc(clientMessage.filesize * sizeof(char));
+    int res = sread(fd, content, clientMessage.filesize);
+    if (res != clientMessage.filesize){
+        printf("ERREUR: %d // %d\n", res, clientMessage.filesize);
+    }
+    // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
+    swrite(*sockfd,content, clientMessage.filesize);
+    // Answer from the server
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
 
     if (serverMessage.endStatus != 1)
@@ -226,7 +250,7 @@ void editFileC(int* numprog, int* sockfd){
     
 }
 //execute program
-void executeProgam(int* numprog){ /// Les message ici doivent etre modifer en char ou int je n'aime pas les tableau
+void executeProgam(int* numprog){ 
     // socket creation
     int sockfd = ssocket();
     // socket connection
