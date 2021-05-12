@@ -182,13 +182,21 @@ void addFileC(int* sockfd){
     clientMessage.filesize = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
     // Copy of the file 
-    char* content = smalloc(clientMessage.filesize * sizeof(char));
+    char* content = smalloc(clientMessage.filesize);
     int res = sread(fd, content, clientMessage.filesize);
+    if (res != clientMessage.filesize){
+        printf("ERROR READ");
+        return;
+    }
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
     // Answer from the server
-    sread(*sockfd,&serverMessage,sizeof(serverMessage));
+    res = sread(*sockfd,&serverMessage,sizeof(serverMessage));
+    if (res != sizeof(serverMessage)){
+        printf("ERROR READ");
+        return;
+    }
 
     if (serverMessage.endStatus != COMPILE_OK)
     {
@@ -223,13 +231,21 @@ void editFileC(int* numprog, int* sockfd){
     clientMessage.filesize = lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
     // Copy of the file 
-    char* content = smalloc(clientMessage.filesize * sizeof(char));
+    char* content = smalloc(clientMessage.filesize);
     int res = sread(fd, content, clientMessage.filesize);
+    if (res != clientMessage.filesize){
+        printf("ERROR READ");
+        return;
+    }
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
     // Answer from the server
     sread(*sockfd,&serverMessage,sizeof(serverMessage));
+    if (res != sizeof(serverMessage)){
+        printf("ERROR READ");
+        return;
+    }
 
     if (serverMessage.endStatus != 1)
     {
@@ -255,7 +271,11 @@ void executeProgam(int* numprog){
 
     swrite(sockfd,&clientMessage,sizeof(clientMessage));
 
-    sread(sockfd,&serverMessage,sizeof(serverMessage));
+    int res = sread(sockfd,&serverMessage,sizeof(serverMessage));
+    if (res != sizeof(serverMessage)){
+        printf("ERROR READ");
+        return;
+    }
 
     if (serverMessage.endStatus == PGM_NOT_FOUND)
     {

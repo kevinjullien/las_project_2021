@@ -185,6 +185,7 @@ void addProgram(clientMessage* req, int* newsockfd)
   strcpy(programme.nom, req->name);
   programme.num = num;
   programme.totalExec = 0;
+  programme.nbrExec = 0;
   resp->pgmNum = num;
 
   /* Création et récupération des données du fichier */
