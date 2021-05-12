@@ -3,3 +3,5 @@
 ./server/maint
 ./server/stat
 ./client/client
+./client/.fuse*
+./server/.fuse*
