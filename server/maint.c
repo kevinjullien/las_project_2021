@@ -22,27 +22,9 @@ int main(int argc, char const *argv[])
     switch (opt)
     {
     case 1:
-        /* code */
         printf("Création ressources partagées\n");
         shm_id = sshmget(SHM_KEY, sizeof(Programmes), IPC_CREAT | IPC_EXCL | PERM);
         sem_create(SEM_KEY, 1, PERM, 1);
-
-        // TODO Développement uniquement
-        /* début développement */
-        Programmes *programmes = sshmat(shm_id);
-        Programme programme;
-
-        strcpy(programme.nom, "HelloWorld.c");
-        programmes->taille = 1;
-        programme.erreur = false;
-        programme.nbrExec = 10;
-        programme.num = 0;
-        programme.totalExec = 64;
-
-        programmes->programmes[0] = programme;
-
-        sshmdt(programmes);
-        /* fin développement */
 
         break;
 
@@ -53,6 +35,7 @@ int main(int argc, char const *argv[])
 
         sshmdelete(shm_id);
         sem_delete(sem_id);
+
         break;
 
     case 3:
@@ -65,12 +48,10 @@ int main(int argc, char const *argv[])
 
         sem_id = sem_get(SEM_KEY, 1);
 
-        printf("down\n"); //TODO Développement uniquement
         sem_down0(sem_id);
 
         sleep(val);
 
-        printf("up\n"); // TODO Développement uniquement
         sem_up0(sem_id);
 
         break;

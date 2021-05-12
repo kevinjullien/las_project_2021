@@ -184,9 +184,6 @@ void addFileC(int* sockfd){
     // Copy of the file 
     char* content = smalloc(clientMessage.filesize * sizeof(char));
     int res = sread(fd, content, clientMessage.filesize);
-    if (res != clientMessage.filesize){
-        printf("ERREUR: %d // %d\n", res, clientMessage.filesize);
-    }
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
@@ -195,7 +192,7 @@ void addFileC(int* sockfd){
 
     if (serverMessage.endStatus != COMPILE_OK)
     {
-        printf("The program n°%d don't compile.\n",serverMessage.pgmNum);
+        printf("The program n°%d doesn't compile.\n",serverMessage.pgmNum);
         printf("Error message : %s\n",serverMessage.output);        
     }else
     {
@@ -228,9 +225,6 @@ void editFileC(int* numprog, int* sockfd){
     // Copy of the file 
     char* content = smalloc(clientMessage.filesize * sizeof(char));
     int res = sread(fd, content, clientMessage.filesize);
-    if (res != clientMessage.filesize){
-        printf("ERREUR: %d // %d\n", res, clientMessage.filesize);
-    }
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
@@ -239,7 +233,7 @@ void editFileC(int* numprog, int* sockfd){
 
     if (serverMessage.endStatus != 1)
     {
-        printf("The program n°%d don't compile.\n",*numprog);
+        printf("The program n°%d doesn't compile.\n",*numprog);
         printf("Error message : %s\n",serverMessage.output);        
     }else
     {
@@ -265,13 +259,13 @@ void executeProgam(int* numprog){
 
     if (serverMessage.endStatus == PGM_NOT_FOUND)
     {
-        printf("The program n°%d don't exist.\n",*numprog);
+        printf("The program n°%d doesn't exist.\n",*numprog);
     }else if (serverMessage.endStatus == COMPILE_KO)
     {
-        printf("The program n°%d don't compile.\n",*numprog);
+        printf("The program n°%d doesn't compile.\n",*numprog);
     }else if (serverMessage.endStatus == PGM_STATUS_KO)
     {
-        printf("The program n°%d has an unexpected comportement :\n",*numprog);
+        printf("The program n°%d has an unexpected behaviour :\n",*numprog);
     }else if (serverMessage.endStatus == PGM_STATUS_OK)
     {
         printf("The program n°%d ended safely.\n", *numprog);
