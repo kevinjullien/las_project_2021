@@ -70,8 +70,9 @@ void compilation_handler (void* arg1, void* arg2) {
 
 }
 
-void executeProgram (int pgmNumber, int newsockfd) {
+void executeProgram (clientMessage* req, int* newsockfd) {
   serverMessage* resp = smalloc(sizeof(serverMessage));
+  int pgmNumber = req->pgmNum;
   struct timeval stop, start;
   int status;
   int pipefd[2];
@@ -157,23 +158,14 @@ void executeProgram (int pgmNumber, int newsockfd) {
   sem_up0(sem_id);
   sshmdt(s);
 
-  //DEBUG
-  printf("end status : %d\n",resp->endStatus);
-  printf("time : %d\n",resp->execTime);
-  printf("Ret code: %d\n",resp->returnCode);
-  printf("stdout: %s\n",resp->output);
-  printf("%ld\n", strlen(resp->output));
-
-
-  swrite(newsockfd, resp, sizeof(resp));
+  swrite(*newsockfd, resp, sizeof(*resp));
   free(resp);
-
 }
 
   
 
 
-void addProgram(clientMessage req, int newsockfd)
+void addProgram(clientMessage* req, int* newsockfd)
 { 
   serverMessage* resp = smalloc(sizeof(serverMessage));
   /* récupération des données nécessaires */
@@ -189,7 +181,7 @@ void addProgram(clientMessage req, int newsockfd)
   }
 
   Programme programme;
-  strcpy(programme.nom, req.name);
+  strcpy(programme.nom, req->name);
   programme.num = num;
   resp->pgmNum = num;
 
@@ -200,9 +192,9 @@ void addProgram(clientMessage req, int newsockfd)
 
   int fd = sopen(path, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 
-  void* file = smalloc(req.filesize);
-  sread(newsockfd, file, req.filesize);
-  swrite(fd, file, req.filesize);
+  void* file = smalloc(req->filesize);
+  sread(*newsockfd, file, req->filesize);
+  swrite(fd, file, req->filesize);
   free(file);
   sclose(fd);
 
@@ -234,18 +226,18 @@ void addProgram(clientMessage req, int newsockfd)
 
   sem_up0(sem_id);
 
-  swrite(newsockfd, resp, sizeof(resp));
+  swrite(*newsockfd, resp, sizeof(*resp));
   free(resp);
 }
 
 
-void editProgram (clientMessage req, int newsockfd)
+void editProgram (clientMessage* req, int* newsockfd)
 {
   serverMessage* resp = smalloc(sizeof(serverMessage));
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   int sem_id = sem_get(SEM_KEY, 1);
 
-  int num = req.pgmNum;
+  int num = req->pgmNum;
 
   if(num < 0 || num > 999){
     resp->endStatus = PGM_NOT_FOUND;
@@ -262,7 +254,7 @@ void editProgram (clientMessage req, int newsockfd)
   }
 
   Programme programme;
-  strcpy(programme.nom, req.name);
+  strcpy(programme.nom, req->name);
   programme.num = num;
   resp->pgmNum = num;
 
@@ -273,9 +265,9 @@ void editProgram (clientMessage req, int newsockfd)
 
   int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 
-  char* file = smalloc(req.filesize*sizeof(char));
-  int nbChar = sread(newsockfd, file, req.filesize);
-  if( nbChar != req.filesize) {
+  char* file = smalloc(req->filesize*sizeof(char));
+  int nbChar = sread(*newsockfd, file, req->filesize);
+  if( nbChar != req->filesize) {
     printf("DEBUG: error reading file");
   }
   swrite(fd, file, nbChar);
@@ -310,13 +302,35 @@ void editProgram (clientMessage req, int newsockfd)
   sem_up0(sem_id);
 }
 
+void client_connection_handler (void* arg1) {
+  int *newsockfd = arg1;
+  clientMessage req;
+
+  sread(*newsockfd, &req, sizeof(req));
+
+  if (req.code == ADD_PGM)
+  { 
+    printf("client request : ADD NEW PROGRAM\n");
+    addProgram(&req, newsockfd);
+  }
+  else if (req.code == EXEC_PGM)
+  {
+    printf("client request : EXECUTE PROGRAM N°%d\n", req.pgmNum);
+    executeProgram(&req, newsockfd);
+  }
+  else
+  {
+    // MODIFY PGM
+    // check if pgm exists
+    //
+  }
+}
 
 
 
 int main(int argc, char const *argv[])
 {
   int sockfd, newsockfd;
-  clientMessage msg;
   //struct pollfd fds[MAX_CLIENT];
 
   if (argc != 2)
@@ -331,24 +345,10 @@ int main(int argc, char const *argv[])
   while (1)
   {
     newsockfd = saccept(sockfd);
-    sread(newsockfd, &msg, sizeof(msg));
-
-    if (msg.code == ADD_PGM)
-    { 
-      printf("client request : ADD NEW PROGRAM\n");
-      addProgram(msg, newsockfd);
+    if(newsockfd > 0){
+      fork_and_run1(&client_connection_handler, &newsockfd);
     }
-    else if (msg.code == EXEC_PGM)
-    {
-      printf("client request : EXECUTE PROGRAM N°%d\n", msg.pgmNum);
-      executeProgram(msg.pgmNum, newsockfd);
-    }
-    else
-    {
-      // MODIFY PGM
-      // check if pgm exists
-      //
-    }
+    
   }
 
   return 0;

@@ -259,19 +259,9 @@ void executeProgam(int* numprog){
     clientMessage.pgmNum = *numprog;
     clientMessage.code = EXEC_PGM;
 
-
-        //DEBUG
-        printf("(DEBUG) AVANT READ SERVEUR \n");
-        printf("Time : %d\n",serverMessage.execTime);
-        printf("Code : %d\n",serverMessage.returnCode);
-        printf("stdout : %s\n\n",serverMessage.output);
-
     swrite(sockfd,&clientMessage,sizeof(clientMessage));
 
     sread(sockfd,&serverMessage,sizeof(serverMessage));
-
-    printf("(DEBUG) APRES READ SERVEUR \n");
-
 
     if (serverMessage.endStatus == PGM_NOT_FOUND)
     {
