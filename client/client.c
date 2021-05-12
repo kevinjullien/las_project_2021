@@ -185,7 +185,7 @@ void addFileC(int* sockfd){
     char* content = smalloc(clientMessage.filesize);
     int res = sread(fd, content, clientMessage.filesize);
     if (res != clientMessage.filesize){
-        printf("ERROR READ");
+        perror("ERROR READ");
         return;
     }
     // Give the message and the file content to the server  
@@ -194,7 +194,7 @@ void addFileC(int* sockfd){
     // Answer from the server
     res = sread(*sockfd,&serverMessage,sizeof(serverMessage));
     if (res != sizeof(serverMessage)){
-        printf("ERROR READ");
+        perror("ERROR READ");
         return;
     }
 
@@ -222,7 +222,7 @@ void editFileC(int* numprog, int* sockfd){
     serverMessage serverMessage;
     clientMessage clientMessage;
     
-    clientMessage.pgmNum = *numprog;
+    clientMessage.code = *numprog;
     clientMessage.nameLength = strlen(name);
     strcpy(clientMessage.name,name);
 
@@ -234,16 +234,16 @@ void editFileC(int* numprog, int* sockfd){
     char* content = smalloc(clientMessage.filesize);
     int res = sread(fd, content, clientMessage.filesize);
     if (res != clientMessage.filesize){
-        printf("ERROR READ");
+        perror("ERROR READ1");
         return;
     }
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
     // Answer from the server
-    sread(*sockfd,&serverMessage,sizeof(serverMessage));
+    res = sread(*sockfd,&serverMessage,sizeof(serverMessage));
     if (res != sizeof(serverMessage)){
-        printf("ERROR READ");
+        perror("ERROR READ2");
         return;
     }
 
@@ -273,7 +273,7 @@ void executeProgam(int* numprog){
 
     int res = sread(sockfd,&serverMessage,sizeof(serverMessage));
     if (res != sizeof(serverMessage)){
-        printf("ERROR READ");
+        perror("ERROR READ");
         return;
     }
 

@@ -174,26 +174,29 @@ void addProgram(clientMessage* req, int* newsockfd)
   int sem_id = sem_get(SEM_KEY, 1);
 
   Programmes *programmes = sshmat(shm_id);
-  int num = programmes->taille;
+  int num = req->code;
 
-  if (num >= 1000){
-    //TODO message d'erreur
-    return;
+  sem_down0(sem_id);
+  
+  if (num < 0){
+    num = programmes->taille;
+    programmes->taille = programmes->taille + 1;
   }
 
-  Programme programme;
-  strcpy(programme.nom, req->name);
-  programme.num = num;
-  programme.totalExec = 0;
-  programme.nbrExec = 0;
+  Programme *programme = &(programmes->programmes)[num];
+  strcpy(programme->nom, req->name);
+  programme->num = num;
+  programme->totalExec = 0;
+  programme->nbrExec = 0;
   resp->pgmNum = num;
+  printf("\n%d\n", num);
 
   /* Création et récupération des données du fichier */
 
   char path[30]; //TODO bof, voir avec constante
   sprintf(path, "%s/%d.c", CODE_PATH, num);
 
-  int fd = sopen(path, O_WRONLY | O_TRUNC| O_CREAT, 0644);
+  int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 
   void* file = smalloc(req->filesize);
   sread(*newsockfd, file, req->filesize);
@@ -214,18 +217,12 @@ void addProgram(clientMessage* req, int* newsockfd)
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
     // Compilation error
-    programme.erreur = true;
+    programme->erreur = true;
     resp->endStatus = COMPILE_KO;
     strcpy(resp->output, buffer);
   }
 
   swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done 
-
-  /* Création des données dans la mémoire partagée */
-
-  sem_down0(sem_id);
-  (programmes->programmes)[num] = programme;
-  programmes->taille = programmes->taille + 1;
 
   sem_up0(sem_id);
 
@@ -323,9 +320,8 @@ void client_connection_handler (void* arg1) {
   }
   else
   {
-    // MODIFY PGM
-    // check if pgm exists
-    //
+    printf("client request : EDIT PROGRAM N°%d\n", req.code);
+    addProgram(&req, newsockfd);
   }
 }
 
