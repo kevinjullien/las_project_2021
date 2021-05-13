@@ -218,8 +218,8 @@ void addProgram(clientMessage *req, int *newsockfd)
   pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &num);
   close(pipefd[1]);
 
-programme->erreur = false;
-    resp->endStatus = COMPILE_OK;
+  programme->erreur = false;
+  resp->endStatus = COMPILE_OK;
 
   char buffer[MAX_CHAR];
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
@@ -239,29 +239,31 @@ programme->erreur = false;
   free(resp);
 }
 
-
 void client_connection_handler(void *arg1)
 {
   int *newsockfd = arg1;
   clientMessage req;
 
-  sread(*newsockfd, &req, sizeof(req));
+  while(sread(*newsockfd, &req, sizeof(req)) != 0){
+    if (req.code == ADD_PGM)
+    {
+      printf("client request : ADD NEW PROGRAM\n");
+      addProgram(&req, newsockfd);
+    }
+    else if (req.code == EXEC_PGM)
+    {
+      printf("client request : EXECUTE PROGRAM N°%d\n", req.pgmNum);
+      executeProgram(&req, newsockfd);
+    }
+    else
+    {
+      printf("client request : EDIT PROGRAM N°%d\n", req.code);
+      addProgram(&req, newsockfd);
+    }
+  }
 
-  if (req.code == ADD_PGM)
-  {
-    printf("client request : ADD NEW PROGRAM\n");
-    addProgram(&req, newsockfd);
-  }
-  else if (req.code == EXEC_PGM)
-  {
-    printf("client request : EXECUTE PROGRAM N°%d\n", req.pgmNum);
-    executeProgram(&req, newsockfd);
-  }
-  else
-  {
-    printf("client request : EDIT PROGRAM N°%d\n", req.code);
-    addProgram(&req, newsockfd);
-  }
+  printf("close connection with client\n");
+  sclose(*newsockfd);
 }
 
 int main(int argc, char const *argv[])

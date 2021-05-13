@@ -188,9 +188,11 @@ void addFileC(int* sockfd){
         perror("ERROR READ");
         return;
     }
+
     // Give the message and the file content to the server  
     swrite(*sockfd,&clientMessage,sizeof(clientMessage));
     swrite(*sockfd,content, clientMessage.filesize);
+    free(content);
     // Answer from the server
     res = sread(*sockfd,&serverMessage,sizeof(serverMessage));
     if (res != sizeof(serverMessage)){
