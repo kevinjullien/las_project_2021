@@ -21,7 +21,8 @@ utils_v10.o: utils_v10.h utils_v10.c
 
 
 clean:
-	rm -f *.o ./server/*.o $(ALL)
+	rm -f *.o ./server/code/* $(ALL)
+	touch ./server/code/fileForGit
 	ipcrm -a
 
 create_server:
