@@ -76,7 +76,7 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   struct timeval stop, start;
   int status;
   int pipefd[2];
-  char buffer[MAX_CHAR];
+  char buffer[MAX_CHAR] = {0};
 
   resp->pgmNum = pgmNumber;
   resp->execTime = 0;
@@ -133,7 +133,6 @@ void executeProgram (clientMessage* req, int* newsockfd) {
     // Stop Timer
     gettimeofday(&stop, NULL);
     resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
-    (s->programmes)[pgmNumber].totalExec +=  + resp->execTime;
   }
 
   // Wait for execution_handler to finish execution
@@ -153,7 +152,7 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   // UPDATE PGM IN SHARED MEMORY
   p->nbrExec = p->nbrExec + 1;
   p->erreur = false;
-  p->totalExec += resp->execTime; //TO VERIFY
+  p->totalExec += resp->execTime ; //TO VERIFY
  
   // UP MUTEX
   sem_up0(sem_id);
@@ -186,6 +185,7 @@ void addProgram(clientMessage* req, int* newsockfd)
   programme.num = num;
   programme.totalExec = 0;
   programme.nbrExec = 0;
+  programme.erreur = false;
   resp->pgmNum = num;
 
   /* Création et récupération des données du fichier */
@@ -306,6 +306,7 @@ void editProgram (clientMessage* req, int* newsockfd)
 }
 
 void client_connection_handler (void* arg1) {
+
   int *newsockfd = arg1;
   clientMessage req;
 
