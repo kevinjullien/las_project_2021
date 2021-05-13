@@ -247,13 +247,14 @@ void editFileC(int* numprog, int* sockfd){
         return;
     }
 
-    if (serverMessage.endStatus != 1)
+   if (serverMessage.endStatus != COMPILE_OK)
     {
-        printf("The program n°%d doesn't compile.\n",*numprog);
+        printf("The program n°%d doesn't compile.\n",serverMessage.pgmNum);
         printf("Error message : %s\n",serverMessage.output);        
     }else
     {
-        printf("The program n°%d compile correctly.\n",*numprog);
+        printf("The program n°%d compile correctly.\n",serverMessage.pgmNum);
+        printf("%s\n", serverMessage.output);
     }
     
 }

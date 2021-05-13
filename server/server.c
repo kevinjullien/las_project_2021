@@ -29,16 +29,17 @@ int initSocketServer(int port)
   return sockfd;
 }
 
-void execution_handler (void* arg1, void* arg2) {
+void execution_handler(void *arg1, void *arg2)
+{
   int *pipefd = arg1;
   int *pgmNumber = arg2;
 
-  sclose(pipefd[0]);    // close read end of pipe for child
+  sclose(pipefd[0]); // close read end of pipe for child
 
-  dup2(pipefd[1], 1);   // send stdout to the pipe
-  dup2(pipefd[1], 2);   // send stderr to the pipe
+  dup2(pipefd[1], 1); // send stdout to the pipe
+  dup2(pipefd[1], 2); // send stderr to the pipe
 
-  sclose(pipefd[1]);    // finally close write end of pipe
+  sclose(pipefd[1]); // finally close write end of pipe
 
   char path[10]; // eg: "./code/999"
   sprintf(path, "%s/%d", CODE_PATH, *pgmNumber);
@@ -46,32 +47,31 @@ void execution_handler (void* arg1, void* arg2) {
   sprintf(pgm, "%d", *pgmNumber);
 
   sexecl(path, pgm, NULL);
-
 }
 
-
-void compilation_handler (void* arg1, void* arg2) {
+void compilation_handler(void *arg1, void *arg2)
+{
   int *pipefd = arg1;
   int *pgmNumber = arg2;
 
-  sclose(pipefd[0]);    // close read end of pipe for child
+  sclose(pipefd[0]); // close read end of pipe for child
 
-  dup2(pipefd[1], 1);   // send stdout to the pipe
-  dup2(pipefd[1], 2);   // send stderr to the pipe
+  dup2(pipefd[1], 1); // send stdout to the pipe
+  dup2(pipefd[1], 2); // send stderr to the pipe
 
-  sclose(pipefd[1]);    // finally close write end of pipe
+  sclose(pipefd[1]); // finally close write end of pipe
 
   char output_file[10]; // ex: ./code/999
-  char input_file[11];        // ex: ./code/999.c
+  char input_file[11];  // ex: ./code/999.c
   sprintf(output_file, "%s/%d", CODE_PATH, *pgmNumber);
   sprintf(input_file, "%s/%d.c", CODE_PATH, *pgmNumber);
 
   sexecl("/usr/bin/gcc", "gcc", "-o", output_file, input_file, NULL);
-
 }
 
-void executeProgram (clientMessage* req, int* newsockfd) {
-  serverMessage* resp = smalloc(sizeof(serverMessage));
+void executeProgram(clientMessage *req, int *newsockfd)
+{
+  serverMessage *resp = smalloc(sizeof(serverMessage));
   int pgmNumber = req->pgmNum;
   struct timeval stop, start;
   int status;
@@ -81,7 +81,8 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   resp->pgmNum = pgmNumber;
   resp->execTime = 0;
 
-  if (pgmNumber < 0 || pgmNumber > 999){
+  if (pgmNumber < 0 || pgmNumber > 999)
+  {
     resp->endStatus = PGM_NOT_FOUND;
     return;
   }
@@ -90,14 +91,15 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   int sem_id = sem_get(SEM_KEY, 1);
   // GET SHARED MEMORY
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
-  Programmes* s = sshmat(shm_id);
-  
+  Programmes *s = sshmat(shm_id);
+
   // DOWN MUTEX
   sem_down0(sem_id);
 
   Programme *p = &(s->programmes)[pgmNumber];
   // TO VERIFY
-  if( (p->nom)[0] == '\0') {
+  if ((p->nom)[0] == '\0')
+  {
     resp->endStatus = PGM_NOT_FOUND;
     return;
   }
@@ -106,7 +108,10 @@ void executeProgram (clientMessage* req, int* newsockfd) {
 
   pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &pgmNumber);
 
-  close(pipefd[1]);  // close the write end of the pipe in the parent
+  close(pipefd[1]); // close the write end of the pipe in the parent
+
+  p->erreur = false;
+  resp->endStatus = COMPILE_OK;
 
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
@@ -118,14 +123,13 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   }
 
   swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
-  
 
   // Now we can execute the pgm
   spipe(pipefd);
-  
+
   gettimeofday(&start, NULL); // Start Timer
   pid_t cpid_execution = fork_and_run2(&execution_handler, pipefd, &pgmNumber);
-  close(pipefd[1]); 
+  close(pipefd[1]);
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
     strcpy(resp->output, buffer); // TO VERIFY
@@ -133,28 +137,32 @@ void executeProgram (clientMessage* req, int* newsockfd) {
     // Stop Timer
     gettimeofday(&stop, NULL);
     resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
-    (s->programmes)[pgmNumber].totalExec +=  + resp->execTime;
+    (s->programmes)[pgmNumber].totalExec += +resp->execTime;
   }
 
   // Wait for execution_handler to finish execution
   swaitpid(cpid_execution, &status, 0);
-  if ( WIFEXITED(status) ) {
-      int code = WEXITSTATUS(status);
-      resp->returnCode = code;
+  if (WIFEXITED(status))
+  {
+    int code = WEXITSTATUS(status);
+    resp->returnCode = code;
 
-      // TO VERIFY
-      if(code == 0){
-        resp->endStatus = PGM_STATUS_OK; 
-      } else {
-        resp->endStatus = PGM_STATUS_KO;
-      }
+    // TO VERIFY
+    if (code == 0)
+    {
+      resp->endStatus = PGM_STATUS_OK;
+    }
+    else
+    {
+      resp->endStatus = PGM_STATUS_KO;
+    }
   }
 
   // UPDATE PGM IN SHARED MEMORY
   p->nbrExec = p->nbrExec + 1;
   p->erreur = false;
   p->totalExec += resp->execTime; //TO VERIFY
- 
+
   // UP MUTEX
   sem_up0(sem_id);
   sshmdt(s);
@@ -163,12 +171,9 @@ void executeProgram (clientMessage* req, int* newsockfd) {
   free(resp);
 }
 
-  
-
-
-void addProgram(clientMessage* req, int* newsockfd)
-{ 
-  serverMessage* resp = smalloc(sizeof(serverMessage));
+void addProgram(clientMessage *req, int *newsockfd)
+{
+  serverMessage *resp = smalloc(sizeof(serverMessage));
   /* récupération des données nécessaires */
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   int sem_id = sem_get(SEM_KEY, 1);
@@ -177,8 +182,9 @@ void addProgram(clientMessage* req, int* newsockfd)
   int num = req->code;
 
   sem_down0(sem_id);
-  
-  if (num < 0){
+
+  if (num < 0)
+  {
     num = programmes->taille;
     programmes->taille = programmes->taille + 1;
   }
@@ -188,8 +194,8 @@ void addProgram(clientMessage* req, int* newsockfd)
   programme->num = num;
   programme->totalExec = 0;
   programme->nbrExec = 0;
+  programme->erreur = false;
   resp->pgmNum = num;
-  printf("\n%d\n", num);
 
   /* Création et récupération des données du fichier */
 
@@ -198,12 +204,11 @@ void addProgram(clientMessage* req, int* newsockfd)
 
   int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 
-  void* file = smalloc(req->filesize);
+  void *file = smalloc(req->filesize);
   sread(*newsockfd, file, req->filesize);
   swrite(fd, file, req->filesize);
   free(file);
   sclose(fd);
-
 
   /* Compilation du programme */
 
@@ -213,16 +218,20 @@ void addProgram(clientMessage* req, int* newsockfd)
   pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &num);
   close(pipefd[1]);
 
+programme->erreur = false;
+    resp->endStatus = COMPILE_OK;
+
   char buffer[MAX_CHAR];
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
+    printf("Passe ici\n%s\n", buffer);
     // Compilation error
     programme->erreur = true;
     resp->endStatus = COMPILE_KO;
     strcpy(resp->output, buffer);
   }
 
-  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done 
+  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
 
   sem_up0(sem_id);
 
@@ -231,85 +240,15 @@ void addProgram(clientMessage* req, int* newsockfd)
 }
 
 
-void editProgram (clientMessage* req, int* newsockfd)
+void client_connection_handler(void *arg1)
 {
-  serverMessage* resp = smalloc(sizeof(serverMessage));
-  int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
-  int sem_id = sem_get(SEM_KEY, 1);
-
-  int num = req->pgmNum;
-
-  if(num < 0 || num > 999){
-    resp->endStatus = PGM_NOT_FOUND;
-    return;
-  }
-
-  Programmes *programmes = sshmat(shm_id);
-  Programme p = (programmes->programmes)[num];
-
-  // TO VERIFY
-  if( (p.nom)[0] == '\0') {
-    resp->endStatus = PGM_NOT_FOUND;
-    return;
-  }
-
-  Programme programme;
-  strcpy(programme.nom, req->name);
-  programme.num = num;
-  resp->pgmNum = num;
-
-  /* récupération des données du fichier */
-
-  char path[30]; //TODO bof, voir avec constante
-  sprintf(path, "%s/%d.c", CODE_PATH, num);
-
-  int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
-
-  char* file = smalloc(req->filesize*sizeof(char));
-  int nbChar = sread(*newsockfd, file, req->filesize);
-  if( nbChar != req->filesize) {
-    printf("DEBUG: error reading file");
-  }
-  swrite(fd, file, nbChar);
-  free(file);
-  sclose(fd);
-
-  /* Compilation du programme */
-
-  int pipefd[2];
-  spipe(pipefd);
-
-  pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &num);
-  close(pipefd[1]);
-
-  char buffer[MAX_CHAR];
-  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
-  {
-    // Compilation error
-    programme.erreur = true;
-    resp->endStatus = COMPILE_KO;
-    strcpy(resp->output, buffer);
-  }
-
-  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
-
-    
-
-  /* Modification des données dans la mémoire partagée */
-
-  sem_down0(sem_id);
-  (programmes->programmes)[num] = programme;
-  sem_up0(sem_id);
-}
-
-void client_connection_handler (void* arg1) {
   int *newsockfd = arg1;
   clientMessage req;
 
   sread(*newsockfd, &req, sizeof(req));
 
   if (req.code == ADD_PGM)
-  { 
+  {
     printf("client request : ADD NEW PROGRAM\n");
     addProgram(&req, newsockfd);
   }
@@ -324,8 +263,6 @@ void client_connection_handler (void* arg1) {
     addProgram(&req, newsockfd);
   }
 }
-
-
 
 int main(int argc, char const *argv[])
 {
@@ -344,16 +281,14 @@ int main(int argc, char const *argv[])
   while (1)
   {
     newsockfd = saccept(sockfd);
-    if(newsockfd > 0){
+    if (newsockfd > 0)
+    {
       fork_and_run1(&client_connection_handler, &newsockfd);
     }
-    
   }
 
   return 0;
 }
-
-
 
 /* SCENARIO DE TEST (DEV ONLY) */
 /*
