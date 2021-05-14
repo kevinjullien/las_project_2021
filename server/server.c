@@ -76,7 +76,7 @@ void executeProgram(clientMessage *req, int *newsockfd)
   struct timeval stop, start;
   int status;
   int pipefd[2];
-  char buffer[MAX_CHAR];
+  char buffer[MAX_CHAR] = {0};
 
   resp->pgmNum = pgmNumber;
   resp->execTime = 0;
