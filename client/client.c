@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include "../utils_v10.h"
 #include "../messages.h"
@@ -201,10 +202,12 @@ void addFileC(int *sockfd, char *path)
     clientMessage.code = -1;
     clientMessage.nameLength = strlen(progname);
     strcpy(clientMessage.name, progname);
-    // Size of the file
+    
     int fd = sopen(path, O_RDONLY, 0644);
-    clientMessage.filesize = lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET);
+    // Size of the file
+    struct stat stat;
+    fstat(fd, &stat);
+    clientMessage.filesize = stat.st_size;
     // Copy of the file
     char *content = smalloc(clientMessage.filesize);
     int res = sread(fd, content, clientMessage.filesize);

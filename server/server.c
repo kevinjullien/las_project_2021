@@ -17,18 +17,72 @@
 
 #define BACKLOG 5    // TO VERIFY
 #define MAX_CLIENT 5 // TO VERIFY
-#define CODE_PATH "./code"
+#define CODE_PATH "./code/"
 
-//void addProgram(clientMessage msg, int newsockfd);
+int initSocketServer(int port);
 
+void execution_handler(void *arg1, void *arg2);
+
+void compilation_handler(void *arg1, void *arg2);
+
+void executeProgram(clientMessage *req, int *newsockfd);
+
+void addProgram(clientMessage *req, int *newsockfd);
+
+void client_connection_handler(void *arg1);
+
+
+int main(int argc, char const *argv[])
+{
+  int sockfd, newsockfd;
+  //struct pollfd fds[MAX_CLIENT];
+
+  if (argc != 2)
+  {
+    printf("%s\n", "Usage: ./server port");
+    exit(1);
+  }
+
+  sockfd = initSocketServer(atoi(argv[1]));
+  printf("server listening on port : %i \n", atoi(argv[1]));
+
+  while (1)
+  {
+    newsockfd = saccept(sockfd);
+    if (newsockfd > 0)
+    {
+      fork_and_run1(&client_connection_handler, &newsockfd);
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * Initialize a server socket with the given port, then return the file descriptor.
+ * 
+ * @param port the given port
+ * @return int the file descriptor of the listened socket
+ */
 int initSocketServer(int port)
 {
   int sockfd = ssocket();
   sbind(port, sockfd);
   slisten(sockfd, BACKLOG);
+  /*To be able to reuse the port immediately in case of abrupt stop of the process*/
+  if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+    perror("setsockoption(SO_REUSEADDR) failed");
   return sockfd;
 }
 
+/**
+ * Child program used to execute a program.
+ * It uses a pipe connected to the father program.
+ * This pipe is used to send the server's response to the father.
+ * 
+ * @param arg1 the pipefd pointer
+ * @param arg2 the program number pointer
+ */
 void execution_handler(void *arg1, void *arg2)
 {
   int *pipefd = arg1;
@@ -42,13 +96,21 @@ void execution_handler(void *arg1, void *arg2)
   sclose(pipefd[1]); // finally close write end of pipe
 
   char path[10]; // eg: "./code/999"
-  sprintf(path, "%s/%d", CODE_PATH, *pgmNumber);
+  sprintf(path, "%s%d", CODE_PATH, *pgmNumber);
   char pgm[3];
   sprintf(pgm, "%d", *pgmNumber);
 
   sexecl(path, pgm, NULL);
 }
 
+/**
+ * Child program used to compile a program.
+ * It uses a pipe connected to the father program.
+ * This pipe is used to send the server's response to the father.
+ * 
+ * @param arg1 the pipefd pointer
+ * @param arg2 the program number pointer
+ */
 void compilation_handler(void *arg1, void *arg2)
 {
   int *pipefd = arg1;
@@ -63,12 +125,18 @@ void compilation_handler(void *arg1, void *arg2)
 
   char output_file[10]; // ex: ./code/999
   char input_file[11];  // ex: ./code/999.c
-  sprintf(output_file, "%s/%d", CODE_PATH, *pgmNumber);
-  sprintf(input_file, "%s/%d.c", CODE_PATH, *pgmNumber);
+  sprintf(output_file, "%s%d", CODE_PATH, *pgmNumber);
+  sprintf(input_file, "%s%d.c", CODE_PATH, *pgmNumber);
 
   sexecl("/usr/bin/gcc", "gcc", "-o", output_file, input_file, NULL);
 }
 
+/**
+ * Run a program present in the ipcs with the given program number.
+ * 
+ * @param req the clientMessage, containing at least a valid program number
+ * @param newsockfd the client's socket fd pointer.
+ */
 void executeProgram(clientMessage *req, int *newsockfd)
 {
   serverMessage *resp = smalloc(sizeof(serverMessage));
@@ -104,27 +172,6 @@ void executeProgram(clientMessage *req, int *newsockfd)
     return;
   }
 
-  spipe(pipefd);
-
-  pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &pgmNumber);
-
-  close(pipefd[1]); // close the write end of the pipe in the parent
-
-  p->erreur = false;
-  resp->endStatus = COMPILE_OK;
-
-  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
-  {
-    // COMPILATION FAILED
-    p->erreur = true;
-    resp->endStatus = COMPILE_KO;
-    strcpy(resp->output, buffer); // TO VERIFY
-    return;
-  }
-
-  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
-
-  // Now we can execute the pgm
   spipe(pipefd);
 
   gettimeofday(&start, NULL); // Start Timer
@@ -171,6 +218,13 @@ void executeProgram(clientMessage *req, int *newsockfd)
   free(resp);
 }
 
+/**
+ * A child that add or edit a program in the ipcs and in the CODE_PATH folder.
+ * The program will be compiled and a serverMessage will be sent through the socket with the data completed.
+ * 
+ * @param req a clientMessage containing at least the filesize, the file name, the code (which is -1 if the program need to be added, >=0 for edition)
+ * @param newsockfd the socket file descriptor
+ */
 void addProgram(clientMessage *req, int *newsockfd)
 {
   serverMessage *resp = smalloc(sizeof(serverMessage));
@@ -199,8 +253,8 @@ void addProgram(clientMessage *req, int *newsockfd)
 
   /* Création et récupération des données du fichier */
 
-  char path[30]; //TODO bof, voir avec constante
-  sprintf(path, "%s/%d.c", CODE_PATH, num);
+  char path[MAX_CHAR];
+  sprintf(path, "%s%d.c", CODE_PATH, num);
 
   int fd = sopen(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 
@@ -224,7 +278,6 @@ void addProgram(clientMessage *req, int *newsockfd)
   char buffer[MAX_CHAR];
   while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
   {
-    printf("Passe ici\n%s\n", buffer);
     // Compilation error
     programme->erreur = true;
     resp->endStatus = COMPILE_KO;
@@ -239,12 +292,20 @@ void addProgram(clientMessage *req, int *newsockfd)
   free(resp);
 }
 
+/**
+ * A child that handle a client connection and communication.
+ * It will wait to receive the request from the client and will
+ * uses the functions depending on the request's code
+ * 
+ * @param arg1 the client's socket fd
+ */
 void client_connection_handler(void *arg1)
 {
   int *newsockfd = arg1;
   clientMessage req;
 
-  while(sread(*newsockfd, &req, sizeof(req)) != 0){
+  while (sread(*newsockfd, &req, sizeof(req)) != 0)
+  {
     if (req.code == ADD_PGM)
     {
       printf("client request : ADD NEW PROGRAM\n");
@@ -264,32 +325,6 @@ void client_connection_handler(void *arg1)
 
   printf("close connection with client\n");
   sclose(*newsockfd);
-}
-
-int main(int argc, char const *argv[])
-{
-  int sockfd, newsockfd;
-  //struct pollfd fds[MAX_CLIENT];
-
-  if (argc != 2)
-  {
-    printf("%s\n", "Usage: ./server port");
-    exit(1);
-  }
-
-  sockfd = initSocketServer(atoi(argv[1]));
-  printf("server listening on port : %i \n", atoi(argv[1]));
-
-  while (1)
-  {
-    newsockfd = saccept(sockfd);
-    if (newsockfd > 0)
-    {
-      fork_and_run1(&client_connection_handler, &newsockfd);
-    }
-  }
-
-  return 0;
 }
 
 /* SCENARIO DE TEST (DEV ONLY) */
