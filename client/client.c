@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <libgen.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -25,8 +26,6 @@ void addFileC(int *sockfd, char *path);
 void editFileC(int *sockfd, int *numprog, char *path);
 //execute program
 void executeProgam(int *numprog);
-//execute program without print
-void executeProgamWithoutPrint(int *numprog);
 
 int main(int argc, char **argv)
 {
@@ -55,16 +54,16 @@ int main(int argc, char **argv)
 
     printf("Welcome !\n");
 
-    char line[MAX_CHAR];
+    char buff[MAX_CHAR];
     char command = '>';
     int numprog = 0;
-    char *path;
+    char path[MAX_CHAR];
 
     while (1)
     {
         printf("What do you want to do ?\n");
-        sread(0, line, MAX_CHAR);
-        command = line[0];
+        sread(0, buff, MAX_CHAR);
+        command = buff[0];
 
         if (command == 'q')
         {
@@ -73,9 +72,7 @@ int main(int argc, char **argv)
         }
 
         /*---------Parsing received string------------*/
-        char *ptr = strtok(line, " ");
-
-         // already got the command
+        char *ptr = strtok(buff, " ");
 
         if (command == '*' || command == '@' || command == '.')
         {
@@ -84,10 +81,13 @@ int main(int argc, char **argv)
         }
         else
         {
-            path = strtok(NULL, "\n");
+            ptr = strtok(NULL, "\n");
+            strcpy(path, ptr);
         }
-        if (command == '.'){
-        path = strtok(NULL, "\n");
+        if (command == '.')
+        {
+            ptr = strtok(NULL, "\n");
+            strcpy(path, ptr);
         }
 
         /*---------Add file C------------*/
@@ -181,7 +181,7 @@ void recurrentExecutor(void *pipe)
         {
             //Execute program once
             //executeProgam(&programs[i]);
-            executeProgamWithoutPrint(&programs[i]);
+            executeProgam(&programs[i]);
         }
     }
     sclose(p[0]);
@@ -194,18 +194,13 @@ void recurrentExecutor(void *pipe)
  */
 void addFileC(int *sockfd, char *path)
 {
-    char name[MAX_NAME];
-
-    
-    printf("Give me name of the file\n");
-    scanf("%s", name);
-
     serverMessage serverMessage;
     clientMessage clientMessage;
+    char *progname = basename(path);
 
     clientMessage.code = -1;
-    clientMessage.nameLength = strlen(name);
-    strcpy(clientMessage.name, name);
+    clientMessage.nameLength = strlen(progname);
+    strcpy(clientMessage.name, progname);
     // Size of the file
     int fd = sopen(path, O_RDONLY, 0644);
     clientMessage.filesize = lseek(fd, 0, SEEK_END);
@@ -251,17 +246,13 @@ void addFileC(int *sockfd, char *path)
  */
 void editFileC(int *sockfd, int *numprog, char *path)
 {
-    char name[MAX_NAME];
-
-    printf("Give me name of the file\n");
-    scanf("%s", name);
-
     serverMessage serverMessage;
     clientMessage clientMessage;
+    char *progname = basename(path);
 
     clientMessage.code = *numprog;
-    clientMessage.nameLength = strlen(name);
-    strcpy(clientMessage.name, name);
+    clientMessage.nameLength = strlen(progname);
+    strcpy(clientMessage.name, progname);
 
     // Size of the file
     int fd = sopen(path, O_RDONLY, 0644);
@@ -342,35 +333,6 @@ void executeProgam(int *numprog)
         printf("Time : %d\n", serverMessage.execTime);
         printf("Code : %d\n", serverMessage.returnCode);
         printf("stdout : %s\n", serverMessage.output);
-    }
-    sclose(sockfd);
-}
-
-/**
- * Execute program on server without any output on stdout (to be able to continue tu use the client),
- * with a new connection.
- * 
- * @param numprog the program number
- */
-void executeProgamWithoutPrint(int *numprog)
-{
-    // socket creation
-    int sockfd = ssocket();
-    // socket connection
-    sconnect(local_host, server_port, sockfd);
-
-    serverMessage serverMessage;
-    clientMessage clientMessage;
-    clientMessage.pgmNum = *numprog;
-    clientMessage.code = EXEC_PGM;
-
-    swrite(sockfd, &clientMessage, sizeof(clientMessage));
-
-    int res = sread(sockfd, &serverMessage, sizeof(serverMessage));
-    if (res != sizeof(serverMessage))
-    {
-        perror("ERROR READ");
-        return;
     }
     sclose(sockfd);
 }
