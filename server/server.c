@@ -160,17 +160,38 @@ void executeProgram(clientMessage *req, int *newsockfd)
   // GET SHARED MEMORY
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   Programmes *s = sshmat(shm_id);
-
   // DOWN MUTEX
   sem_down0(sem_id);
 
   Programme *p = &(s->programmes)[pgmNumber];
-  // TO VERIFY
   if ((p->nom)[0] == '\0')
   {
     resp->endStatus = PGM_NOT_FOUND;
     return;
   }
+  // Compilation if the program has an error
+  if (p->erreur){
+  int pipefd[2];
+  spipe(pipefd);
+
+  pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &pgmNumber);
+  close(pipefd[1]);
+
+  p->erreur = false;
+  resp->endStatus = COMPILE_OK;
+
+  char buffer[MAX_CHAR];
+  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
+  {
+    // Compilation error
+    p->erreur = true;
+    resp->endStatus = COMPILE_KO;
+    strcpy(resp->output, buffer);
+  }
+
+  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
+  }
+  if(!p->erreur){
 
   spipe(pipefd);
 
@@ -186,18 +207,17 @@ void executeProgram(clientMessage *req, int *newsockfd)
     resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
     (s->programmes)[pgmNumber].totalExec += +resp->execTime;
   }
-
   // Wait for execution_handler to finish execution
   swaitpid(cpid_execution, &status, 0);
   if (WIFEXITED(status))
   {
     int code = WEXITSTATUS(status);
     resp->returnCode = code;
-
     // TO VERIFY
     if (code == 0)
     {
       resp->endStatus = PGM_STATUS_OK;
+      p->erreur = false;
     }
     else
     {
@@ -207,15 +227,15 @@ void executeProgram(clientMessage *req, int *newsockfd)
 
   // UPDATE PGM IN SHARED MEMORY
   p->nbrExec = p->nbrExec + 1;
-  p->erreur = false;
   p->totalExec += resp->execTime; //TO VERIFY
-
+  }
   // UP MUTEX
   sem_up0(sem_id);
   sshmdt(s);
 
   swrite(*newsockfd, resp, sizeof(*resp));
   free(resp);
+  printf("6\n");
 }
 
 /**

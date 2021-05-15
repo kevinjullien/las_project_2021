@@ -175,14 +175,20 @@ void recurrentExecutor(void *pipe)
         //New program to add in the launch list
         if (exec != -1)
         {
-            programs[pointeur++] = exec;
+            if (pointeur < 50)
+            {
+                programs[pointeur++] = exec;
+            }
         }
 
-        for (int i = 0; i < pointeur; i++)
+        else
         {
-            //Execute program once
-            //executeProgam(&programs[i]);
-            executeProgam(&programs[i]);
+            for (int i = 0; i < pointeur; i++)
+            {
+                //Execute program once
+                //executeProgam(&programs[i]);
+                executeProgam(&programs[i]);
+            }
         }
     }
     sclose(p[0]);
@@ -202,7 +208,7 @@ void addFileC(int *sockfd, char *path)
     clientMessage.code = -1;
     clientMessage.nameLength = strlen(progname);
     strcpy(clientMessage.name, progname);
-    
+
     int fd = sopen(path, O_RDONLY, 0644);
     // Size of the file
     struct stat stat;
@@ -328,7 +334,9 @@ void executeProgam(int *numprog)
     }
     else if (serverMessage.endStatus == PGM_STATUS_KO)
     {
-        printf("The program n°%d has an unexpected behaviour :\n", *numprog);
+        printf("The program n°%d has an unexpected behaviour\n", *numprog);
+        printf("Code : %d\n", serverMessage.returnCode);
+        printf("stdout : %s\n", serverMessage.output);
     }
     else if (serverMessage.endStatus == PGM_STATUS_OK)
     {
