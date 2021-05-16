@@ -1,3 +1,9 @@
+/**
+ * @file stat.c
+ * @authors Furnelle-Jullien-Valbuena
+ * @date 2021-05-16
+ * 
+ */
 #include "../utils_v10.h"
 #include "ipc_conf.h"
 

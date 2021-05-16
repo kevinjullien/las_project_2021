@@ -1,3 +1,9 @@
+/**
+ * @file client.c
+ * @authors Furnelle-Jullien-Valbuena
+ * @date 2021-05-16
+ * 
+ */
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>

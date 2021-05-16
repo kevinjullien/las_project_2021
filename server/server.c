@@ -1,3 +1,9 @@
+/**
+ * @file server.c
+ * @authors Furnelle-Jullien-Valbuena
+ * @date 2021-05-16
+ * 
+ */
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
