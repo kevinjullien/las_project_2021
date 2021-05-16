@@ -15,8 +15,7 @@
 #include "../messages.h"
 #include "ipc_conf.h"
 
-#define BACKLOG 5    // TO VERIFY
-#define MAX_CLIENT 5 // TO VERIFY
+#define BACKLOG 5
 #define CODE_PATH "./code/"
 
 int initSocketServer(int port);
@@ -35,11 +34,10 @@ void client_connection_handler(void *arg1);
 int main(int argc, char const *argv[])
 {
   int sockfd, newsockfd;
-  //struct pollfd fds[MAX_CLIENT];
 
   if (argc != 2)
   {
-    printf("%s\n", "Usage: ./server port");
+    printf("%s\n", "Usage: ./server PORT");
     exit(1);
   }
 
@@ -160,81 +158,91 @@ void executeProgram(clientMessage *req, int *newsockfd)
   // GET SHARED MEMORY
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   Programmes *s = sshmat(shm_id);
-  // DOWN MUTEX
+
   sem_down0(sem_id);
 
-  Programme *p = &(s->programmes)[pgmNumber];
-  if ((p->nom)[0] == '\0')
-  {
+  if(pgmNumber >= s->taille){
+    // Libère les ressources et renvoit la reponse PGM_NOT_FOUND au client
+    sem_up0(sem_id);
+    sshmdt(s);
     resp->endStatus = PGM_NOT_FOUND;
+    swrite(*newsockfd, resp, sizeof(*resp));
+    free(resp);
     return;
   }
+
+  Programme *p = &(s->programmes)[pgmNumber];
+
   // Compilation if the program has an error
-  if (p->erreur){
-  int pipefd[2];
-  spipe(pipefd);
-
-  pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &pgmNumber);
-  close(pipefd[1]);
-
-  p->erreur = false;
-  resp->endStatus = COMPILE_OK;
-
-  char buffer[MAX_CHAR];
-  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
+  if (p->erreur)
   {
-    // Compilation error
-    p->erreur = true;
-    resp->endStatus = COMPILE_KO;
-    strcpy(resp->output, buffer);
-  }
+    int pipefd[2];
+    spipe(pipefd);
 
-  swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
-  }
-  if(!p->erreur){
+    pid_t cpid_compilation = fork_and_run2(&compilation_handler, pipefd, &pgmNumber);
+    close(pipefd[1]);
 
-  spipe(pipefd);
+    p->erreur = false;
+    resp->endStatus = COMPILE_OK;
 
-  gettimeofday(&start, NULL); // Start Timer
-  pid_t cpid_execution = fork_and_run2(&execution_handler, pipefd, &pgmNumber);
-  close(pipefd[1]);
-  while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
-  {
-    strcpy(resp->output, buffer); // TO VERIFY
-
-    // Stop Timer
-    gettimeofday(&stop, NULL);
-    resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
-  }
-  // Wait for execution_handler to finish execution
-  swaitpid(cpid_execution, &status, 0);
-  if (WIFEXITED(status))
-  {
-    int code = WEXITSTATUS(status);
-    resp->returnCode = code;
-    // TO VERIFY
-    if (code == 0)
+    char buffer[MAX_CHAR];
+    while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
     {
-      resp->endStatus = PGM_STATUS_OK;
-      p->erreur = false;
+      // Compilation error
+      p->erreur = true;
+      resp->endStatus = COMPILE_KO;
+      strcpy(resp->output, buffer);
     }
-    else
-    {
-      resp->endStatus = PGM_STATUS_KO;
-    }
+
+    swaitpid(cpid_compilation, NULL, 0); // Wait for the compilation to be done
   }
 
-  // UPDATE PGM IN SHARED MEMORY
-  p->nbrExec = p->nbrExec + 1;
-  p->totalExec += resp->execTime; //TO VERIFY
+  if (!p->erreur)
+  {
+
+    spipe(pipefd);
+
+    gettimeofday(&start, NULL); // Start Timer
+    pid_t cpid_execution = fork_and_run2(&execution_handler, pipefd, &pgmNumber);
+    close(pipefd[1]);
+    while (sread(pipefd[0], buffer, sizeof(buffer)) != 0)
+    {
+      strcpy(resp->output, buffer);
+
+      // Stop Timer
+      gettimeofday(&stop, NULL);
+      resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+    }
+    
+    // Wait for execution_handler to finish execution
+    swaitpid(cpid_execution, &status, 0);
+    if (WIFEXITED(status))
+    {
+      int code = WEXITSTATUS(status);
+      resp->returnCode = code;
+
+      if (code == 0)
+      {
+        resp->endStatus = PGM_STATUS_OK;
+        p->erreur = false;
+      }
+      else
+      {
+        resp->endStatus = PGM_STATUS_KO;
+      }
+    }
+
+    // UPDATE PGM IN SHARED MEMORY
+    p->nbrExec = p->nbrExec + 1;
+    p->totalExec += resp->execTime;
   }
-  // UP MUTEX
+
+  // UP
   sem_up0(sem_id);
   sshmdt(s);
 
   swrite(*newsockfd, resp, sizeof(*resp));
   free(resp);
-  printf("6\n");
 }
 
 /**
