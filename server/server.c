@@ -147,12 +147,6 @@ void executeProgram(clientMessage *req, int *newsockfd)
   resp->pgmNum = pgmNumber;
   resp->execTime = 0;
 
-  if (pgmNumber < 0 || pgmNumber > 999)
-  {
-    resp->endStatus = PGM_NOT_FOUND;
-    return;
-  }
-
   // GET SEMAPHORE
   int sem_id = sem_get(SEM_KEY, 1);
   // GET SHARED MEMORY
@@ -161,8 +155,8 @@ void executeProgram(clientMessage *req, int *newsockfd)
 
   sem_down0(sem_id);
 
-  if(pgmNumber >= s->taille){
-    // Libère les ressources et renvoit la reponse PGM_NOT_FOUND au client
+  // Programme n'existe pas : libère les ressources et renvoit la reponse PGM_NOT_FOUND au client
+  if(pgmNumber >= s->taille || pgmNumber > 999 || pgmNumber < 0){
     sem_up0(sem_id);
     sshmdt(s);
     resp->endStatus = PGM_NOT_FOUND;
@@ -213,7 +207,7 @@ void executeProgram(clientMessage *req, int *newsockfd)
       gettimeofday(&stop, NULL);
       resp->execTime = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
     }
-    
+
     // Wait for execution_handler to finish execution
     swaitpid(cpid_execution, &status, 0);
     if (WIFEXITED(status))
@@ -255,7 +249,6 @@ void executeProgram(clientMessage *req, int *newsockfd)
 void addProgram(clientMessage *req, int *newsockfd)
 {
   serverMessage *resp = smalloc(sizeof(serverMessage));
-  /* récupération des données nécessaires */
   int shm_id = sshmget(SHM_KEY, sizeof(Programmes), 0);
   int sem_id = sem_get(SEM_KEY, 1);
 
@@ -353,57 +346,3 @@ void client_connection_handler(void *arg1)
   printf("close connection with client\n");
   sclose(*newsockfd);
 }
-
-/* SCENARIO DE TEST (DEV ONLY) */
-/*
-int main(int argc, char const *argv[]){
-  serverMessage* resp = malloc(sizeof(serverMessage));
-
-  clientMessage* req = malloc(sizeof(clientMessage));
-  strcpy(req->name,"HelloWord");
-  req->nameLength = 9;
-  char* file = "#include<stdio.h>\n#include<stdlib.h>\n#include<unistd.h>\nint main(){sleep(3);printf(\"Hello World SLEEP 3 sec\");}";
-  strcpy(req->file, file); 
-
-
-  printf("---- ADD PROGRAM ----\n");
-
-  addProgram(*req, resp);
-  printf("PGM NUM         : %d\n",resp->pgmNum);
-  printf("PGM COMPILATION : %d\n",resp->compileFlag);
-  printf("PGM OUTPUT      : \n>>> %s\n", resp->output);
-
-
-  printf("---- EXEC PROGRAM ----\n");
-  executeProgram(1, resp);
-  printf("PGM NUM         : %d\n",resp->pgmNum);
-  printf("PGM END STATUS  : %d\n",resp->endStatus);
-  printf("PGM EXEC TIME   : %d\n",resp->execTime);
-  printf("PGM RETURN CODE : %d\n",resp->returnCode);
-  printf("PGM OUTPUT      : \n>>> %s\n",resp->output);
-
-  printf("---- EDIT PROGRAM ----\n");
-
-  strcpy(resp->output,"");
-  req->pgmNum = 1;
-  file = "#include<stdio.h>\n#include<stdlib.h>\n#include<unistd.h>\nint main(){sleep(5);printf(\"Hello World SLEEP 5 sec\");}";
-  strcpy(req->file, file); 
-
-  editProgram(*req, resp);
-  printf("PGM NUM         : %d\n",resp->pgmNum);
-  printf("PGM COMPILATION : %d\n",resp->compileFlag);
-  printf("PGM OUTPUT      : \n>>> %s\n", resp->output);
-
-
-  printf("---- EXEC PROGRAM ----\n");
-  executeProgram(1, resp);
-  printf("PGM NUM         : %d\n",resp->pgmNum);
-  printf("PGM END STATUS  : %d\n",resp->endStatus);
-  printf("PGM EXEC TIME   : %d\n",resp->execTime);
-  printf("PGM RETURN CODE : %d\n",resp->returnCode);
-  printf("PGM OUTPUT      : \n>>> %s\n",resp->output);
-
-  free(resp);
-}
-
-*/

@@ -205,7 +205,7 @@ void addFileC(int *sockfd, char *path)
     clientMessage clientMessage;
     char *progname = basename(path);
 
-    clientMessage.code = -1;
+    clientMessage.code = ADD_PGM;
     clientMessage.nameLength = strlen(progname);
     strcpy(clientMessage.name, progname);
 
